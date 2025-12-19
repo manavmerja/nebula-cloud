@@ -21,6 +21,7 @@ import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
+import CloudServiceNode from './nodes/CloudServiceNode';
 
 // --- TYPES ---
 type NodeData = {
@@ -46,6 +47,7 @@ const nodeTypes = {
     promptNode: PromptNode,
     aiNode: AINode,
     resultNode: ResultNode,
+    cloudNode: CloudServiceNode,
 };
 
 function Flow() {
@@ -111,20 +113,17 @@ function Flow() {
             ));
 
             // B. Create NEW Visual Nodes (Architecture)
-            // Hum naye nodes ko input aur output ke beech me place karenge
-            const newGeneratedNodes = data.nodes.map((node: any, index: number) => ({
-                id: node.id,
-                type: 'default', // Standard styling for now
-                data: { label: node.label }, // Label from API
-                position: { x: 450 + (index * 200), y: 400 + (index % 2 * 100) }, // Thoda neeche (offset)
-                style: {
-                    background: '#1e293b',
-                    color: '#fff',
-                    border: '1px solid #38bdf8',
-                    width: 150,
-                    fontSize: '12px'
-                }
-            }));
+           // B. Create NEW Visual Nodes (Architecture)
+      const newGeneratedNodes = data.nodes.map((node: any, index: number) => ({
+        id: node.id,
+        // 3. TYPE CHANGE KARO: 'default' se 'cloudNode'
+        type: 'cloudNode', 
+        data: { label: node.label }, // Label pass kar rahe hain, icon apne aap decide hoga
+        // Position thoda adjust kiya taki faile huye dikhein
+        position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) }, 
+        // 4. STYLE HATA DO: inline style ki ab zaroorat nahi, component khud handle karega
+        // style: { ... }  <-- DELETE THIS PART
+      }));
 
             // C. Create New Edges
             const newGeneratedEdges = data.edges.map((edge: any) => ({
