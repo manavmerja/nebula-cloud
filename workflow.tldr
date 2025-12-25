@@ -520,8 +520,8 @@
 			"typeName": "shape"
 		},
 		{
-			"x": 510.418608305044,
-			"y": 94.73196068712636,
+			"x": 505.94490440232664,
+			"y": 94.28463034433386,
 			"rotation": 0,
 			"isLocked": false,
 			"opacity": 1,
@@ -763,9 +763,9 @@
 			"typeName": "binding"
 		},
 		{
-			"x": 620.8611615243756,
-			"y": -248.9152517474073,
-			"z": 0.5896089908837164,
+			"x": 398.240627788098,
+			"y": 287.0797084886303,
+			"z": 0.6096279461451286,
 			"meta": {},
 			"id": "camera:page:page",
 			"typeName": "camera"
@@ -1185,9 +1185,9 @@
 			"editingShapeId": null,
 			"croppingShapeId": null,
 			"selectedShapeIds": [
-				"shape:U_js3Ws4p5u75nDQtu5MV"
+				"shape:k_sMSzAaY-oV1szKQ86uE"
 			],
-			"hoveredShapeId": null,
+			"hoveredShapeId": "shape:k_sMSzAaY-oV1szKQ86uE",
 			"erasingShapeIds": [],
 			"hintingShapeIds": [],
 			"focusedGroupId": null,
@@ -2051,19 +2051,11 @@
 		{
 			"followingUserId": null,
 			"opacityForNextShape": 1,
-			"stylesForNextShape": {
-				"tldraw:geo": "rectangle",
-				"tldraw:dash": "draw",
-				"tldraw:fill": "none",
-				"tldraw:color": "black",
-				"tldraw:size": "m",
-				"tldraw:textAlign": "start",
-				"tldraw:horizontalAlign": "middle"
-			},
+			"stylesForNextShape": {},
 			"brush": null,
 			"scribbles": [],
 			"cursor": {
-				"type": "cross",
+				"type": "default",
 				"rotation": 0
 			},
 			"isFocusMode": false,
@@ -2073,8 +2065,8 @@
 			"screenBounds": {
 				"x": 0,
 				"y": 0,
-				"w": 1232,
-				"h": 558
+				"w": 1055.272705078125,
+				"h": 763.6364135742188
 			},
 			"insets": [
 				false,
@@ -2089,7 +2081,7 @@
 			"isChatting": false,
 			"highlightedUserIds": [],
 			"isFocused": true,
-			"devicePixelRatio": 1.5,
+			"devicePixelRatio": 1.375,
 			"isCoarsePointer": false,
 			"isHoveringCanvas": true,
 			"openMenus": [],
