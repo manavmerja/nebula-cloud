@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+langchain
+langchain-groq
+langchain-google-genai
+huggingface_hub
+langchain-huggingface
+requests

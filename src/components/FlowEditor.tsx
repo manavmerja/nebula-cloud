@@ -29,6 +29,7 @@ type NodeData = {
     model?: string;
     output?: string;
     label?: string;
+    onSync?: (newCode: string) => Promise<void>; // For synchronizing code with visuals
 };
 
 // --- INITIAL DATA ---
@@ -93,37 +94,38 @@ function Flow() {
 
         try {
             // 2. Call API
-            const response = await fetch('/api/generate', {
+            const response = await fetch('http://localhost:8000/api/v1/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: promptText }),
             });
 
-            const data = await response.json();
+            // Inside runFlow function...
 
-            if (data.error) throw new Error(data.error);
+            const data = await response.json(); // Backend response
 
-            // --- MAGIC: Handle the JSON Response ---
+            // ERROR HANDLING
+            if (data.detail) throw new Error(data.detail); // FastAPI errors 'detail' me aate hain
 
-            // A. Update Output Text (Summary + Terraform)
-            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraformCode}`;
+            // NAME MATCHING (Backend: terraform_code -> Frontend Logic)
+            // Yahan dhyan dena: Backend "terraform_code" bhej raha hai
+            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`; // <--- Change to underscore
 
             setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
             ));
 
             // B. Create NEW Visual Nodes (Architecture)
-           // B. Create NEW Visual Nodes (Architecture)
-      const newGeneratedNodes = data.nodes.map((node: any, index: number) => ({
-        id: node.id,
-        // 3. TYPE CHANGE KARO: 'default' se 'cloudNode'
-        type: 'cloudNode', 
-        data: { label: node.label }, // Label pass kar rahe hain, icon apne aap decide hoga
-        // Position thoda adjust kiya taki faile huye dikhein
-        position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) }, 
-        // 4. STYLE HATA DO: inline style ki ab zaroorat nahi, component khud handle karega
-        // style: { ... }  <-- DELETE THIS PART
-      }));
+            const newGeneratedNodes = data.nodes.map((node: any, index: number) => ({
+                id: node.id,
+                // 3. TYPE CHANGE KARO: 'default' se 'cloudNode'
+                type: 'cloudNode',
+                data: { label: node.label }, // Label pass kar rahe hain, icon apne aap decide hoga
+                // Position thoda adjust kiya taki faile huye dikhein
+                position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) },
+                // 4. STYLE HATA DO: inline style ki ab zaroorat nahi, component khud handle karega
+                // style: { ... }  <-- DELETE THIS PART
+            }));
 
             // C. Create New Edges
             const newGeneratedEdges = data.edges.map((edge: any) => ({
@@ -149,6 +151,98 @@ function Flow() {
             setLoading(false);
         }
     };
+
+    // --- NEW: Handle Sync (Code -> Visual) ---
+    const onSyncCode = async (newCode: string) => {
+        console.log("Syncing visuals from code...");
+
+        // 1. Current State (JSON) taiyar karo
+        // Note: Asli project me humein 'currentState' ko state me store karna chahiye.
+        // Abhi ke liye hum assume kar rahe hain ki backend sirf code se naya bana dega.
+        // Lekin hamara backend schema "current_state" mangta hai.
+
+        // Hack: Hum backend ko dummy state bhejenge + new Code,
+        // Kyunki hamara Agent itna smart hai ki wo New Code se pura naya JSON bana dega.
+
+        const inputNode = nodes.find(n => n.id === '1');
+        const resultNode = nodes.find(n => n.id === '3');
+
+        // Previous JSON construct kar rahe hain (Optional but good)
+        const currentState = {
+            summary: "Existing State",
+            nodes: nodes.filter(n => n.type === 'cloudNode').map(n => ({
+                id: n.id, label: n.data.label, type: n.type, provider: 'aws', serviceType: n.data.label
+            })),
+            edges: [],
+            terraform_code: ""
+        };
+
+        try {
+            const response = await fetch('http://localhost:8000/api/v1/sync/code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    current_state: currentState,
+                    updated_code: newCode
+                }),
+            });
+
+            const data = await response.json();
+            if (data.detail) throw new Error(data.detail);
+
+            // --- UPDATE VISUALS (Nodes & Edges) ---
+
+            // 1. Naye Nodes Banao
+            const syncedNodes = data.nodes.map((node: any, index: number) => ({
+                id: node.id,
+                type: 'cloudNode',
+                data: { label: node.label },
+                position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) },
+            }));
+
+            // 2. Naye Edges Banao
+            const syncedEdges = data.edges.map((edge: any) => ({
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                animated: true,
+                style: { stroke: '#94a3b8' },
+                markerEnd: { type: MarkerType.ArrowClosed },
+            }));
+
+            // 3. Graph Update Karo (Purane Generated nodes hata kar naye lagao)
+            // Note: Hum Input/AI/Result node (id 1,2,3) ko nahi hatayenge.
+            const staticNodes = nodes.filter(n => ['1', '2', '3'].includes(n.id));
+            setNodes([...staticNodes, ...syncedNodes]);
+            setEdges([...initialEdges, ...syncedEdges]); // initialEdges me wiring hai 1->2->3
+
+            // 4. Result Node ko update karo (Taaki summary update ho jaye)
+            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
+
+            setNodes((nds) => nds.map((n) =>
+                n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
+            ));
+
+            alert("Diagram Updated Successfully! 🚀");
+
+        } catch (error: any) {
+            console.error("Sync Error:", error);
+            alert(`Sync Failed: ${error.message}`);
+        }
+    };
+
+    // Pass 'onSyncCode' function to ResultNode
+    useEffect(() => {
+        setNodes((nds) =>
+            nds.map((node) => {
+                if (node.id === '3') {
+                    // Hum data me function inject kar rahe hain
+                    node.data = { ...node.data, onSync: onSyncCode };
+                }
+                return node;
+            })
+        );
+    }, [setNodes]); // Dependency array
 
     return (
         <div className="relative w-full h-full">
