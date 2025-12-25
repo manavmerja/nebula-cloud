@@ -22,6 +22,7 @@ import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
+import Sidebar from './Sidebar';
 
 // --- TYPES ---
 type NodeData = {
@@ -56,6 +57,7 @@ function Flow() {
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [userInput, setUserInput] = useState('');
     const [loading, setLoading] = useState(false); // Loading state
+    const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
 
     // Input sync logic
     useEffect(() => {
@@ -69,10 +71,67 @@ function Flow() {
         );
     }, [userInput, setNodes]);
 
-    const onConnect = useCallback(
-        (params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)),
-        [setEdges],
+   const onConnect = useCallback(
+        (params: Edge | Connection) => {
+            // 1. Edge Create Karo
+            setEdges((eds) => addEdge(params, eds));
+            
+            // 2. Naya Edge List calculate karo
+            // Note: addEdge returns a NEW array
+            const newEdges = addEdge(params, edges);
+
+            // 3. TRIGGER SYNC
+            triggerVisualSync(nodes, newEdges);
+        },
+        [setEdges, nodes, edges], // Dependencies check kar lena
     );
+
+    // --- DRAG & DROP LOGIC START ---
+    
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
+
+    const onDrop = useCallback(
+        (event: React.DragEvent) => {
+            event.preventDefault();
+
+            // Check karo ki React Flow load hua hai ya nahi
+            if (!reactFlowInstance) return;
+
+            // Sidebar se data nikalo
+            const dataStr = event.dataTransfer.getData('application/reactflow');
+            if (!dataStr) return;
+
+            const { type, label } = JSON.parse(dataStr);
+
+            // 1. Mouse position calculate karo
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            // 2. Naya Node banao
+            const newNode: Node = {
+                id: `${type}-${Date.now()}`, // Unique ID based on time
+                type,
+                position,
+                data: { label: label }, // EC2, S3, etc.
+            };
+
+            // 3. State update karo (Visual add ho jayega)
+            setNodes((nds) => nds.concat(newNode));
+            
+          // 2. TRIGGER SYNC (Backend ko batane ke liye)
+            // Hum 'nodes.concat(newNode)' bhej rahe hain taaki latest list jaye
+            triggerVisualSync(nodes.concat(newNode), edges); 
+        },
+        [reactFlowInstance, nodes, edges, setNodes], // 'nodes' aur 'edges' dependency add karna zaroori hai
+
+    );
+
+    // --- DRAG & DROP LOGIC END ---
 
     // --- THE REAL LOGIC ---
     const runFlow = async () => {
@@ -149,6 +208,71 @@ function Flow() {
             ));
         } finally {
             setLoading(false);
+        }
+    };
+
+    // --- NEW: Visual -> Code Sync Logic ---
+    const triggerVisualSync = async (currentNodes: Node[], currentEdges: Edge[]) => {
+        console.log("🔄 Auto-Syncing Code from Visuals...");
+        
+        // 1. UI Update: User ko dikhao ki kaam chal raha hai
+        setNodes((nds) => nds.map((n) => 
+            n.id === '3' ? { ...n, data: { ...n.data, output: "Syncing changes..." } } : n
+        ));
+
+        try {
+            // 2. Data Formatting (Backend ke Schema ke hisaab se)
+            // Backend ko 'cloudNode' chahiye, prompt/ai/result nodes nahi
+            const cloudNodes = currentNodes
+                .filter(n => n.type === 'cloudNode')
+                .map(n => ({
+                    id: n.id,
+                    label: n.data.label,
+                    type: n.type,
+                    provider: 'aws', // Default AWS rakh rahe hain
+                    serviceType: n.data.label // Important: EC2, S3 yahi se jayega
+                }));
+
+            const cloudEdges = currentEdges.map(e => ({
+                id: e.id,
+                source: e.source,
+                target: e.target
+            }));
+
+            // Previous State construct (Schema requirement)
+            const currentState = {
+                summary: "User Visual Update",
+                nodes: cloudNodes,
+                edges: cloudEdges,
+                terraform_code: "" 
+            };
+
+            // 3. API Call
+            const response = await fetch('http://localhost:8000/api/v1/sync/visual', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    current_state: currentState,
+                    updated_nodes: cloudNodes,
+                    updated_edges: cloudEdges
+                }),
+            });
+
+            const data = await response.json();
+            if (data.detail) throw new Error(data.detail);
+
+            // 4. Update Result Node with NEW Code
+            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
+            
+            setNodes((nds) => nds.map((n) => 
+                n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
+            ));
+
+        } catch (error: any) {
+            console.error("Visual Sync Error:", error);
+            setNodes((nds) => nds.map((n) => 
+                n.id === '3' ? { ...n, data: { ...n.data, output: `Sync Error: ${error.message}` } } : n
+            ));
         }
     };
 
@@ -244,37 +368,50 @@ function Flow() {
         );
     }, [setNodes]); // Dependency array
 
-    return (
-        <div className="relative w-full h-full">
-            {/* Run Button */}
-            <div className="absolute top-4 right-4 z-10">
-                <button
-                    onClick={runFlow}
-                    disabled={loading}
-                    className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold shadow-lg transition-all ${loading
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-105'
-                        } text-white`}
-                >
-                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} fill="white" />}
-                    {loading ? 'Designing...' : 'Run Architect'}
-                </button>
-            </div>
+   return (
+        // LAYOUT CHANGE: Flex row banaya taki sidebar left me aaye
+        <div className="flex w-full h-full bg-black">
+            
+            {/* 1. LEFT SIDEBAR */}
+            <Sidebar />
 
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                nodeTypes={nodeTypes}
-                fitView
-                style={{ background: '#000' }}
-            >
-                <Controls style={{ filter: 'invert(1)' }} />
-                <MiniMap nodeColor="#6865A5" style={{ backgroundColor: '#141414' }} maskColor="rgba(0,0,0, 0.7)" />
-                <Background color="#555" gap={20} size={1} />
-            </ReactFlow>
+            {/* 2. MAIN CANVAS AREA */}
+            <div className="flex-1 relative h-full">
+                
+               {/* Run Button (Ab relative container ke andar hai) */}
+                <div className="absolute top-4 right-4 z-10">
+                    <button
+                        onClick={runFlow}
+                        disabled={loading}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all transform hover:scale-105 ${
+                            loading 
+                            ? 'bg-gray-700 cursor-not-allowed text-gray-400' 
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/20'
+                        }`}
+                    >
+                        {loading ? <Loader2 className="animate-spin" /> : <Play fill="currentColor" />}
+                        {loading ? 'Architecting...' : 'Run Architect'}
+                    </button>
+                </div>
+
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onInit={setReactFlowInstance} // IMPORTANT: Instance capture karna
+                    onDrop={onDrop}               // IMPORTANT: Drop handle karna
+                    onDragOver={onDragOver}       // IMPORTANT: Allow drop
+                    nodeTypes={nodeTypes}
+                    fitView
+                    style={{ background: '#000' }}
+                >
+                    <Controls style={{ filter: 'invert(1)' }} />
+                    <MiniMap nodeColor="#6865A5" style={{ backgroundColor: '#141414' }} maskColor="rgba(0,0,0, 0.7)" />
+                    <Background color="#555" gap={20} size={1} />
+                </ReactFlow>
+            </div>
         </div>
     );
 }

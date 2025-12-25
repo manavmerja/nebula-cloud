@@ -61,10 +61,11 @@ NEW EDGES: {edges}
 
 INSTRUCTIONS:
 1. Look at the new list of nodes and edges.
-2. Generate valid Terraform HCL code that represents this infrastructure.
-3. Update the "summary" to reflect the changes.
-4. Return the COMPLETE updated JSON object.
-5. Ensure the "nodes" and "edges" in the output match the input exactly.
+2. Generate valid Terraform HCL code.
+3. IMPORTANT: For resource names, DO NOT use the raw IDs (like 'cloudNode-123'). 
+   Instead, generate meaningful names based on the 'label' (e.g., label='EC2' -> name='web_server').
+4. Update the "summary" to reflect the changes.
+5. Return the COMPLETE updated JSON object.
 
 {format_instructions}
 """
