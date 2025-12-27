@@ -61,11 +61,14 @@ NEW EDGES: {edges}
 
 INSTRUCTIONS:
 1. Look at the new list of nodes and edges.
-2. Generate valid Terraform HCL code.
-3. IMPORTANT: For resource names, DO NOT use the raw IDs (like 'cloudNode-123'). 
-   Instead, generate meaningful names based on the 'label' (e.g., label='EC2' -> name='web_server').
+2. Generate valid Terraform HCL code that represents this infrastructure.
+3. IMPORTANT: For resource names, DO NOT use the raw IDs (like 'cloudNode-12345'). 
+   Instead, generate meaningful snake_case names based on the 'label'.
+   - Example: If label is "EC2 Instance", name it "web_server" or "app_instance".
+   - Example: If label is "S3 Bucket", name it "assets_bucket".
 4. Update the "summary" to reflect the changes.
 5. Return the COMPLETE updated JSON object.
+6. Ensure the "nodes" and "edges" in the output match the input exactly.
 
 {format_instructions}
 """
