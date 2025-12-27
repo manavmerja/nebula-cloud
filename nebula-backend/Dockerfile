@@ -1,5 +1,5 @@
 # 1. Python Image uthao
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # 2. Working directory set karo
 WORKDIR /code
