@@ -153,7 +153,7 @@ function Flow() {
 
         try {
             // 2. Call API
-            const response = await fetch('http://localhost:8000/api/v1/generate', {
+            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: promptText }),
@@ -248,7 +248,7 @@ function Flow() {
             };
 
             // 3. API Call
-            const response = await fetch('http://localhost:8000/api/v1/sync/visual', {
+            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/sync/visual', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -302,7 +302,7 @@ function Flow() {
         };
 
         try {
-            const response = await fetch('http://localhost:8000/api/v1/sync/code', {
+            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/sync/code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
