@@ -16,3 +16,6 @@ body {
       rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
   min-height: 100vh;
 }
+.react-flow__node.selected .glass {
+  border-color: rgba(255,255,255,0.6);
+}

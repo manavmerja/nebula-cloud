@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Terminal, Copy } from 'lucide-react';
+import GlassContainer from '../nodes/GlassContainer';
 
 function ResultNode({ data }: { data: { output?: string } }) {
 
@@ -14,7 +15,7 @@ function ResultNode({ data }: { data: { output?: string } }) {
 
     return (
         // Node Container - Green Border
-        <div className="px-4 py-3 shadow-lg rounded-xl bg-gray-900/95 border-2 border-green-500 backdrop-blur-md min-w-[300px]">
+        <GlassContainer>
 
             {/* Input Handle (Left Side) - Data aane ke liye */}
             <Handle
@@ -59,7 +60,7 @@ function ResultNode({ data }: { data: { output?: string } }) {
                     <span className="text-[10px] text-gray-500">Read-Only Mode</span>
                 </div>
             </div>
-        </div>
+        </GlassContainer>
     );
 }
 

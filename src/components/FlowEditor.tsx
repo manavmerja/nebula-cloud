@@ -20,7 +20,7 @@ import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
-
+import GlassContainer from './nodes/GlassContainer';
 // --- INITIAL DATA ---
 const initialNodes: RFNode[] = [
     { id: '1', type: 'promptNode', data: { text: '' }, position: { x: 50, y: 200 } },
@@ -107,7 +107,7 @@ function Flow() {
     };
 
     return (
-        <div className="relative w-full h-full">
+        <GlassContainer>
 
             {/* --- RUN BUTTON (Floating) --- */}
             <div className="absolute top-4 right-4 z-10">
@@ -134,7 +134,7 @@ function Flow() {
                 <MiniMap nodeColor="#6865A5" style={{ backgroundColor: '#141414' }} maskColor="rgba(0,0,0, 0.7)" />
                 <Background color="#555" gap={20} size={1} />
             </ReactFlow>
-        </div>
+        </GlassContainer>
     );
 }
 
