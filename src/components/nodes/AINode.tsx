@@ -1,11 +1,11 @@
 import React, { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Server, Zap, Shield } from 'lucide-react'; // Icons import kiye
-
+import GlassContainer from '../nodes/GlassContainer';
 function AINode({ data }: { data: { model?: string } }) {
     return (
         // Node Container - Cyan Border
-        <div className="px-4 py-3 shadow-lg rounded-xl bg-gray-900/90 border-2 border-cyan-500 backdrop-blur-md min-w-[280px]">
+        <GlassContainer>
 
             {/* Input Handle (Left Side) - Data aane ke liye */}
             <Handle
@@ -51,7 +51,7 @@ function AINode({ data }: { data: { model?: string } }) {
                 position={Position.Right}
                 className="w-3 h-3 !bg-cyan-500 !border-2 !border-white"
             />
-        </div>
+        </GlassContainer>
     );
 }
 
