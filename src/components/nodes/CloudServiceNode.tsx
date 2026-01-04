@@ -7,6 +7,7 @@ import {
     Network,      // Load Balancer/VPC ke liye
     CloudCog,     // Default/Generic ke liye
 } from 'lucide-react';
+import GlassContainer from "./GlassContainer";
 
 // --- HELPER FUNCTION: Icon Picker ---
 // Ye function label padh kar sahi icon return karega
@@ -36,14 +37,13 @@ function CloudServiceNode({ data }: { data: { label: string } }) {
     return (
         // Node Container - Professional Diagram Style
         // Chhota size, rounded corners, subtle border
-        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-900/90 border border-gray-700 shadow-xl backdrop-blur-sm min-w-[100px] hover:border-blue-500 transition-colors">
-
+        <GlassContainer>
             {/* Input Handle (Top) - For architecture diagrams, top-down or left-right works. Let's add all 4 for flexibility */}
             <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-gray-600" />
             <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-gray-600" />
 
             {/* Icon Section */}
-            <div className="mb-2 p-2 bg-black/50 rounded-full border border-gray-800">
+            <div className="mb-2 p-2  rounded-full border border-gray-800">
                 {icon}
             </div>
 
@@ -55,7 +55,7 @@ function CloudServiceNode({ data }: { data: { label: string } }) {
             {/* Output Handle (Bottom & Right) */}
             <Handle type="source" position={Position.Right} className="w-2 h-2 !bg-gray-600" />
             <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-gray-600" />
-        </div>
+        </GlassContainer>
     );
 }
 

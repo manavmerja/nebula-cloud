@@ -2,7 +2,7 @@ import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import { Terminal, RefreshCw, Check } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-
+import GlassContainer from "./GlassContainer";
 // Props define kar rahe hain ki parent se kya milega
 interface ResultNodeProps {
   data: {
@@ -43,7 +43,7 @@ function ResultNode({ data }: ResultNodeProps) {
   };
 
   return (
-    <div className="rounded-xl border border-green-500/50 bg-black/90 shadow-2xl w-[500px] overflow-hidden flex flex-col h-[500px]">
+    <GlassContainer>
 
       {/* Header */}
       <div className="flex items-center justify-between bg-gray-900 px-4 py-2 border-b border-green-500/30">
@@ -93,7 +93,7 @@ function ResultNode({ data }: ResultNodeProps) {
           ℹ️ {summary}
         </div>
       )}
-    </div>
+    </GlassContainer>
   );
 }
 

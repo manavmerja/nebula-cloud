@@ -75,7 +75,7 @@ function Flow() {
         (params: Edge | Connection) => {
             // 1. Edge Create Karo
             setEdges((eds) => addEdge(params, eds));
-            
+
             // 2. Naya Edge List calculate karo
             // Note: addEdge returns a NEW array
             const newEdges = addEdge(params, edges);
@@ -87,7 +87,7 @@ function Flow() {
     );
 
     // --- DRAG & DROP LOGIC START ---
-    
+
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
@@ -122,10 +122,10 @@ function Flow() {
 
             // 3. State update karo (Visual add ho jayega)
             setNodes((nds) => nds.concat(newNode));
-            
+
           // 2. TRIGGER SYNC (Backend ko batane ke liye)
             // Hum 'nodes.concat(newNode)' bhej rahe hain taaki latest list jaye
-            triggerVisualSync(nodes.concat(newNode), edges); 
+            triggerVisualSync(nodes.concat(newNode), edges);
         },
         [reactFlowInstance, nodes, edges, setNodes], // 'nodes' aur 'edges' dependency add karna zaroori hai
 
@@ -214,9 +214,9 @@ function Flow() {
     // --- NEW: Visual -> Code Sync Logic ---
     const triggerVisualSync = async (currentNodes: Node[], currentEdges: Edge[]) => {
         console.log("🔄 Auto-Syncing Code from Visuals...");
-        
+
         // 1. UI Update: User ko dikhao ki kaam chal raha hai
-        setNodes((nds) => nds.map((n) => 
+        setNodes((nds) => nds.map((n) =>
             n.id === '3' ? { ...n, data: { ...n.data, output: "Syncing changes..." } } : n
         ));
 
@@ -244,7 +244,7 @@ function Flow() {
                 summary: "User Visual Update",
                 nodes: cloudNodes,
                 edges: cloudEdges,
-                terraform_code: "" 
+                terraform_code: ""
             };
 
             // 3. API Call
@@ -263,14 +263,14 @@ function Flow() {
 
             // 4. Update Result Node with NEW Code
             const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
-            
-            setNodes((nds) => nds.map((n) => 
+
+            setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
             ));
 
         } catch (error: any) {
             console.error("Visual Sync Error:", error);
-            setNodes((nds) => nds.map((n) => 
+            setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: `Sync Error: ${error.message}` } } : n
             ));
         }
@@ -370,22 +370,22 @@ function Flow() {
 
    return (
         // LAYOUT CHANGE: Flex row banaya taki sidebar left me aaye
-        <div className="flex w-full h-full bg-black">
-            
+        <div className="flex w-full h-full ">
+
             {/* 1. LEFT SIDEBAR */}
             <Sidebar />
 
             {/* 2. MAIN CANVAS AREA */}
             <div className="flex-1 relative h-full">
-                
+
                {/* Run Button (Ab relative container ke andar hai) */}
                 <div className="absolute top-4 right-4 z-10">
                     <button
                         onClick={runFlow}
                         disabled={loading}
                         className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all transform hover:scale-105 ${
-                            loading 
-                            ? 'bg-gray-700 cursor-not-allowed text-gray-400' 
+                            loading
+                            ? 'bg-gray-700 cursor-not-allowed text-gray-400'
                             : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/20'
                         }`}
                     >
