@@ -27,7 +27,9 @@ app = FastAPI(
 origins = [
     "http://localhost:3000",           # Local Frontend
     "https://nebula-cloud-seven.vercel.app", # Vercel Frontend
-    # Agar koi aur URL ho toh yahan add karein
+    "https://nebula-cloud-git-main-manavmerjas-projects.vercel.app",
+    "https://nebula-cloud-o9z9c0jlb-manavmerjas-projects.vercel.app"
+
 ]
 
 app.add_middleware(
