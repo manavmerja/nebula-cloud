@@ -1,19 +1,24 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+from typing import List, Optional
 
-# Load .env file
-load_dotenv()
-
-class Settings:
+class Settings(BaseSettings):
     PROJECT_NAME: str = "Nebula Cloud"
-    VERSION: str = "1.0.0"  # <--- Ye line missing thi
     API_V1_STR: str = "/api/v1"
     
-    # Database Config
-    MONGO_URI: str = os.getenv("MONGO_URI")
-    DB_NAME: str = os.getenv("DB_NAME", "nebula_db")
+    # 🚨 YE DO LINES MISSING THI, INHE ADD KARO:
+    GROQ_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
+    HF_TOKEN: Optional[str] = None
+    
+    # MongoDB settings
+    MONGO_URI: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "nebula_db"
+    
+    # CORS settings (Jo humne pehle fix kiya tha)
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
-    # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey")
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
 
 settings = Settings()
