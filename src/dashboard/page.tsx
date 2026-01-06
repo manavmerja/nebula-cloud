@@ -37,7 +37,9 @@ export default function Dashboard() {
   const fetchProjects = async (email: string) => {
     try {
       // Backend API call
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/projects/${email}`);
+      // ✅ Is line se replace karo:
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+      const res = await fetch(`${API_BASE}/api/v1/projects/${email}`);
       const data = await res.json();
       setProjects(data);
     } catch (error) {

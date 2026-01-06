@@ -97,7 +97,8 @@ function Flow() {
                 terraform_code: terraformCode
             };
 
-            const response = await fetch('http://127.0.0.1:8000/api/v1/projects/save', {
+            const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+            const response = await fetch(`${API_BASE}/api/v1/projects/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
