@@ -1,0 +1,9 @@
+# Python Specific
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# MacOS/Windows junk
+.DS_Store
+Thumbs.db
