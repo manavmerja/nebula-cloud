@@ -17,3 +17,5 @@ COPY ./nebula-backend /code/app
 # 6. Server start command
 # Ye command ab '/code/app' folder ke andar 'main.py' file dhoondegi
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+
+
