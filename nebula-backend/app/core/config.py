@@ -2,20 +2,21 @@ from pydantic_settings import BaseSettings
 from typing import List, Optional
 
 class Settings(BaseSettings):
+    # Project Info
     PROJECT_NAME: str = "Nebula Cloud"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
-    # 🚨 YE DO LINES MISSING THI, INHE ADD KARO:
+    # API Keys (Environment se aayenge)
     GROQ_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     HF_TOKEN: Optional[str] = None
     
-    # MongoDB settings
+    # Database Settings
     MONGO_URI: str = "mongodb://localhost:27017"
-    DATABASE_NAME: str = "nebula_db"
+    DATABASE_NAME: str = "nebula_db"  # 👈 YE LINE MISSING THI!
     
-    # CORS settings (Jo humne pehle fix kiya tha)
+    # CORS (Frontend Connection)
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
     class Config:
