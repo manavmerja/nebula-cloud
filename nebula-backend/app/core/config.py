@@ -3,6 +3,7 @@ from typing import List, Optional
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Nebula Cloud"
+    VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
     # 🚨 YE DO LINES MISSING THI, INHE ADD KARO:
