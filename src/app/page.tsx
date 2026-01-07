@@ -1,3 +1,4 @@
+import { Suspense } from 'react'; // <--- 1. Import Suspense
 import FlowEditor from '@/components/FlowEditor';
 
 export default function Home() {
@@ -13,7 +14,14 @@ export default function Home() {
 
       {/* Canvas Section */}
       <div className="flex-grow w-full h-[85vh] relative">
-        <FlowEditor />
+        {/* 2. Fix: FlowEditor ko Suspense me wrap kiya */}
+        <Suspense fallback={
+          <div className="flex h-full w-full items-center justify-center text-cyan-500">
+            Loading Editor... ⏳
+          </div>
+        }>
+          <FlowEditor />
+        </Suspense>
       </div>
     </main>
   );
