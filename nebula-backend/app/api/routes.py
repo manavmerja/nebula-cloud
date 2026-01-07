@@ -1,3 +1,4 @@
+from app.services.pricing import calculate_cost  
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Any, Dict
@@ -31,7 +32,25 @@ class CodeSyncRequest(BaseModel):
 
 @router.post("/generate")
 async def generate_architecture(request: PromptRequest):
-    return await generate_architecture_json(request.prompt)
+    # 1. AI se Architecture Generata karo
+    ai_response = await generate_architecture_json(request.prompt)
+    
+    # 2. Cost Estimate karo (Pricing Logic) 💰
+    # Hum check karte hain ki nodes list form me hai ya nahi
+    nodes = ai_response.get("nodes", [])
+    cost_data = calculate_cost(nodes)
+    
+    # 3. Summary Text me Cost append kar do
+    # Isse Frontend apne aap Cost dikha dega bina kisi code change ke!
+    cost_text = f"\n\n💰 ESTIMATED COST: ${cost_data['total']} / month*"
+    
+    if "summary" in ai_response:
+        ai_response["summary"] += cost_text
+    else:
+        ai_response["summary"] = cost_text
+
+    # 4. Return Updated Response
+    return ai_response
 
 @router.post("/sync/visual")
 async def sync_visual_to_code(request: SyncRequest):
