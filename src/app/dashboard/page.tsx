@@ -113,8 +113,11 @@ export default function Dashboard() {
                         {new Date(project.created_at).toLocaleDateString()}
                     </div>
                     
-                    {/* Open Button (Abhi sirf Home par le jayega, baad mein Edit logic lagayenge) */}
-                    <button className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-bold">
+                 {/* ✅ Naya Code (Replace karo): */}
+                    <button 
+                        onClick={() => router.push(`/?id=${project._id}`)}
+                        className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-bold"
+                    >
                         Open <ArrowRight className="w-3 h-3" />
                     </button>
                 </div>

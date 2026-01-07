@@ -15,6 +15,7 @@ import ReactFlow, {
     Node,
 } from 'reactflow';
 import { useSession } from "next-auth/react"; // <--- Session hook
+import { useSearchParams } from "next/navigation";
 
 // Components Imports
 import Header from './Header'; // <--- NEW HEADER IMPORT
@@ -61,6 +62,42 @@ function Flow() {
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
     const { data: session } = useSession(); 
     const [saving, setSaving] = useState(false); 
+    const searchParams = useSearchParams();
+    const projectId = searchParams.get('id');
+
+    // --- LOAD PROJECT LOGIC 🔄 ---
+    useEffect(() => {
+        const loadProject = async () => {
+            if (!projectId) return; // Agar URL me ID nahi hai, to ruk jao
+
+            setLoading(true);
+            try {
+                const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+                
+                // Backend se specific project fetch karo
+                // (Note: Backend me ye route hum abhi banayenge)
+                const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`); 
+                
+                if (!response.ok) throw new Error("Project not found");
+
+                const data = await response.json();
+
+                // Canvas par nodes aur edges set karo
+                if (data.nodes) setNodes(data.nodes);
+                if (data.edges) setEdges(data.edges);
+                
+                console.log(`Project loaded: ${data.name}`);
+
+            } catch (error: any) {
+                console.error("Load Error:", error);
+                alert("Could not load the project. Check console for details.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadProject();
+    }, [projectId, setNodes, setEdges]); // Dependencies
 
     // --- SAVE PROJECT LOGIC 💾 ---
     const saveProject = async () => {

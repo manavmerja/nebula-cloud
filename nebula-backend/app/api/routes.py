@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Any, Dict
+from bson import ObjectId
 
 # --- SERVICES IMPORT (Aapke existing logic) ---
 from app.services.generator import generate_architecture_json
@@ -73,5 +74,35 @@ async def get_user_projects(user_email: str):
             p["_id"] = str(p["_id"])
             
         return projects
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+        # --- GET SINGLE PROJECT ROUTE (LOAD) 🔄 ---
+@router.get("/project/{project_id}")
+async def get_project(project_id: str):
+    try:
+        db = get_database()
+        collection = db["projects"]
+
+        # 1. String ID ko MongoDB ObjectId me convert karo
+        try:
+            obj_id = ObjectId(project_id)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid Project ID format")
+
+        # 2. Database me dhoondo
+        project = await collection.find_one({"_id": obj_id})
+
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # 3. ID ko wapis String banao (JSON bhejne ke liye)
+        project["_id"] = str(project["_id"])
+
+        return project
+
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
