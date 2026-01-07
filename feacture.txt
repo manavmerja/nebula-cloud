@@ -1,0 +1,1 @@
+Idea ----> Generate ----> Save ----> Dashboard ----> Reload ----> Download.

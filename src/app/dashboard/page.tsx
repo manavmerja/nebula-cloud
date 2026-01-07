@@ -1,130 +1,150 @@
-"use client";
+'use client';
 
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Server, Calendar, ArrowRight } from "lucide-react";
-import Link from "next/link";
-
-interface Project {
-  _id: string;
-  name: string;
-  description: string;
-  created_at: string;
-  nodes: any[];
-}
+import { ArrowRight, Layout, Trash2 } from "lucide-react"; // 🗑️ Trash2 Icon Added
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null); // New State for delete loading
 
-  // 1. Agar login nahi hai, toh home par bhej do
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+
+  // --- FETCH PROJECTS ---
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
+      return;
     }
-  }, [status, router]);
 
-  // 2. Projects Fetch Karo
-  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!session?.user?.email) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/projects/${session.user.email}`);
+        if (!res.ok) throw new Error("Failed to fetch projects");
+        const data = await res.json();
+        setProjects(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (session?.user?.email) {
-      fetchProjects(session.user.email);
+      fetchProjects();
     }
-  }, [session]);
+  }, [session, status, router, API_BASE]);
 
-  const fetchProjects = async (email: string) => {
+  // --- DELETE LOGIC 🗑️ ---
+  const handleDelete = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Card click hone se roko (sirf delete hoga)
+    
+    if (!confirm("Are you sure you want to delete this project? This cannot be undone.")) {
+      return;
+    }
+
+    setDeletingId(projectId);
+
     try {
-      // Backend API call
-      // ✅ Is line se replace karo:
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
-      const res = await fetch(`${API_BASE}/api/v1/projects/${email}`);
-      const data = await res.json();
-      setProjects(data);
+      const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) throw new Error("Failed to delete");
+
+      // UI se project hatao bina page refresh kiye
+      setProjects(prev => prev.filter(p => p._id !== projectId));
+      
     } catch (error) {
-      console.error("Failed to fetch projects:", error);
+      alert("Failed to delete project");
+      console.error(error);
     } finally {
-      setLoading(false);
+      setDeletingId(null);
     }
   };
 
-  if (status === "loading" || loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-cyan-500">
-        <Loader2 className="animate-spin w-10 h-10" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex h-screen items-center justify-center bg-black text-cyan-500">Loading Projects... ⏳</div>;
+  if (error) return <div className="flex h-screen items-center justify-center bg-black text-red-500">Error: {error}</div>;
 
   return (
     <div className="min-h-screen bg-black text-white p-8">
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-10 flex justify-between items-center">
+      <div className="max-w-6xl mx-auto mb-10 flex justify-between items-center border-b border-gray-800 pb-6">
         <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            My Projects
-            </h1>
-            <p className="text-gray-400 mt-1">Manage your cloud architectures</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            Dashboard
+          </h1>
+          <p className="text-gray-400 mt-2">Manage your cloud architectures</p>
         </div>
-        
-        {/* New Project Button */}
-        <Link 
-            href="/"
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-all"
+        <button 
+          onClick={() => router.push("/")}
+          className="bg-gray-800 hover:bg-gray-700 text-white px-6 py-2 rounded-full border border-gray-700 transition-all"
         >
-            + New Project
-        </Link>
+          + New Project
+        </button>
       </div>
 
       {/* Grid */}
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
         {projects.length === 0 ? (
-            <div className="col-span-full text-center py-20 bg-gray-900/50 rounded-xl border border-gray-800">
-                <p className="text-gray-500 text-lg">No projects found yet.</p>
-                <Link href="/" className="text-cyan-400 hover:underline mt-2 inline-block">
-                    Create your first architecture -{">"}
-                </Link>
-            </div>
+          <div className="col-span-full text-center py-20 text-gray-500 bg-gray-900/50 rounded-xl border border-dashed border-gray-800">
+            <Layout className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No projects found. Create your first architecture! 🚀</p>
+          </div>
         ) : (
-            projects.map((project) => (
+          projects.map((project) => (
             <div 
-                key={project._id} 
-                className="bg-gray-900/50 border border-gray-800 hover:border-cyan-500/50 p-6 rounded-xl transition-all hover:shadow-lg hover:shadow-cyan-500/10 group"
+              key={project._id} 
+              onClick={() => router.push(`/?id=${project._id}`)}
+              className="group relative bg-gray-900/50 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 hover:bg-gray-900 transition-all cursor-pointer overflow-hidden"
             >
-                <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-gray-800 rounded-lg group-hover:bg-cyan-900/20 transition-colors">
-                        <Server className="text-cyan-400 w-6 h-6" />
-                    </div>
-                    <span className="text-xs text-gray-500 font-mono border border-gray-700 px-2 py-1 rounded">
-                        {project.nodes.length} Nodes
-                    </span>
-                </div>
+              {/* Decoration Gradient */}
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                <h3 className="text-xl font-bold text-gray-200 mb-2">{project.name}</h3>
-                <p className="text-sm text-gray-400 mb-4 line-clamp-2">
-                    {project.description || "No description provided."}
-                </p>
-
-                <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-800 pt-4">
-                    <div className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {new Date(project.created_at).toLocaleDateString()}
-                    </div>
-                    
-                 {/* ✅ Naya Code (Replace karo): */}
-                    <button 
-                        onClick={() => router.push(`/?id=${project._id}`)}
-                        className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 font-bold"
-                    >
-                        Open <ArrowRight className="w-3 h-3" />
-                    </button>
+              <div className="flex justify-between items-start mb-4">
+                <div className="bg-blue-500/10 p-3 rounded-lg text-blue-400 group-hover:text-white group-hover:bg-blue-500 transition-colors">
+                  <Layout size={24} />
                 </div>
+                
+                {/* 🗑️ DELETE BUTTON */}
+                <button 
+                  onClick={(e) => handleDelete(project._id, e)}
+                  disabled={deletingId === project._id}
+                  className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors z-10"
+                  title="Delete Project"
+                >
+                  {deletingId === project._id ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <Trash2 size={18} />
+                  )}
+                </button>
+              </div>
+
+              <h2 className="text-xl font-bold mb-2 group-hover:text-blue-400 transition-colors">
+                {project.name}
+              </h2>
+              <p className="text-sm text-gray-400 line-clamp-2 mb-6">
+                {project.description}
+              </p>
+
+              <div className="flex justify-between items-center text-xs text-gray-500 border-t border-gray-800 pt-4">
+                <span>📦 {project.nodes?.length || 0} Resources</span>
+                <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform text-blue-400">
+                  Open <ArrowRight size={12} />
+                </span>
+              </div>
             </div>
-            ))
+          ))
         )}
-
       </div>
     </div>
   );

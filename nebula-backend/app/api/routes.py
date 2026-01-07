@@ -106,3 +106,31 @@ async def get_project(project_id: str):
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+        # --- DELETE PROJECT ROUTE 🗑️ ---
+@router.delete("/projects/{project_id}")
+async def delete_project(project_id: str):
+    try:
+        db = get_database()
+        collection = db["projects"]
+
+        # 1. ID Convert karo
+        try:
+            obj_id = ObjectId(project_id)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid Project ID")
+
+        # 2. Delete Operation
+        result = await collection.delete_one({"_id": obj_id})
+
+        # 3. Check karo delete hua ya nahi
+        if result.deleted_count == 1:
+            return {"message": "Project deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
