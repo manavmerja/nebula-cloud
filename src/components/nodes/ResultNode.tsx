@@ -1,45 +1,57 @@
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Terminal, RefreshCw, Check } from 'lucide-react';
+import { Terminal, RefreshCw, Download } from 'lucide-react'; // 1. Download Icon import kiya
 import Editor from '@monaco-editor/react';
 
-// Props define kar rahe hain ki parent se kya milega
 interface ResultNodeProps {
   data: {
     output: string;
-    onSync: (newCode: string) => void; // New function to talk to parent
+    onSync: (newCode: string) => void;
   }
 }
 
 function ResultNode({ data }: ResultNodeProps) {
   const [code, setCode] = useState('');
   const [summary, setSummary] = useState('');
-  const [isDirty, setIsDirty] = useState(false); // Kya user ne kuch change kiya?
+  const [isDirty, setIsDirty] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  // Jab Backend se naya data aaye, tab editor update karo
   useEffect(() => {
     if (data.output) {
       const parts = data.output.split('TERRAFORM CODE:');
       setSummary(parts[0]?.replace('SUMMARY:', '').trim());
       setCode(parts[1]?.trim() || '');
-      setIsDirty(false); // Reset dirty state
+      setIsDirty(false);
     }
   }, [data.output]);
 
-  // Handle Code Change
   const handleEditorChange = (value: string | undefined) => {
     setCode(value || '');
-    setIsDirty(true); // User ne kuch type kiya hai!
+    setIsDirty(true);
   };
 
-  // Handle Sync Button Click
   const handleSyncClick = async () => {
     setSyncing(true);
-    // Parent function call karenge (FlowEditor.tsx me logic hoga)
     await data.onSync(code);
     setSyncing(false);
     setIsDirty(false);
+  };
+
+  // 2. New Download Logic 📥
+  // Note: Hum 'code' state use kar rahe hain. 
+  // Agar user ne editor me changes kiye hain, to wo bhi download honge!
+  const handleDownload = () => {
+    if (!code) return;
+
+    const blob = new Blob([code], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'main.tf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -47,6 +59,8 @@ function ResultNode({ data }: ResultNodeProps) {
 
       {/* Header */}
       <div className="flex items-center justify-between bg-gray-900 px-4 py-2 border-b border-green-500/30">
+        
+        {/* Left Side: Title */}
         <div className="flex items-center gap-2">
           <Terminal size={16} className="text-green-400" />
           <span className="text-sm font-bold text-green-100">
@@ -54,43 +68,62 @@ function ResultNode({ data }: ResultNodeProps) {
           </span>
         </div>
 
-        {/* Sync Button (Sirf tab dikhega jab changes honge) */}
-        {isDirty && (
-          <button
-            onClick={handleSyncClick}
-            disabled={syncing}
-            className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-bold transition-all ${syncing ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-500 text-white animate-pulse'
+        {/* Right Side: Actions Buttons */}
+        <div className="flex items-center gap-2">
+          
+          {/* Sync Button (Existing) */}
+          {isDirty && (
+            <button
+              onClick={handleSyncClick}
+              disabled={syncing}
+              className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-bold transition-all ${
+                syncing ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-500 text-white animate-pulse'
               }`}
-          >
-            {syncing ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            {syncing ? 'Syncing...' : 'Update Diagram'}
-          </button>
-        )}
+            >
+              {syncing ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              {syncing ? 'Syncing...' : 'Update'}
+            </button>
+          )}
+
+          {/* 3. New Download Button (Always Visible if code exists) ⬇️ */}
+          {code && (
+            <button
+              onClick={handleDownload}
+              title="Download main.tf"
+              className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black transition-all"
+            >
+              <Download size={14} />
+              <span>.tf</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <Handle type="target" position={Position.Left} className="w-3 h-3 !bg-green-500" />
 
-      {/* Editor Area */}
+      {/* Editor Area (Monaco) */}
       <div className="flex-1 relative">
         <Editor
           height="100%"
-          defaultLanguage="hcl" // Terraform language support
-          theme="vs-dark" // VS Code Dark Theme
+          defaultLanguage="hcl"
+          theme="vs-dark"
           value={code}
           onChange={handleEditorChange}
           options={{
-            minimap: { enabled: false }, // Chhota map hide kiya space bachane ke liye
+            minimap: { enabled: false },
             fontSize: 12,
             scrollBeyondLastLine: false,
             automaticLayout: true,
+            padding: { top: 10 }
           }}
         />
       </div>
 
-      {/* Summary Footer */}
+      {/* Footer Summary */}
       {summary && (
-        <div className="bg-gray-900/90 p-2 border-t border-gray-800 text-[10px] text-gray-400 truncate px-4">
-          ℹ️ {summary}
+        <div className="bg-gray-900/90 p-2 border-t border-gray-800 text-[10px] text-gray-400 truncate px-4 flex items-center gap-2">
+          <span>ℹ️</span>
+          <span className="truncate">{summary}</span>
         </div>
       )}
     </div>
