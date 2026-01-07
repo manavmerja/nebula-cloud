@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Terminal, RefreshCw, Download } from 'lucide-react'; // 1. Download Icon import kiya
+import { Terminal, RefreshCw, Download, DollarSign } from 'lucide-react'; // Dollar Icon
 import Editor from '@monaco-editor/react';
 
 interface ResultNodeProps {
@@ -13,13 +13,24 @@ interface ResultNodeProps {
 function ResultNode({ data }: ResultNodeProps) {
   const [code, setCode] = useState('');
   const [summary, setSummary] = useState('');
+  const [cost, setCost] = useState<string | null>(null); // State for Cost
   const [isDirty, setIsDirty] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (data.output) {
+      // 1. Parse Logic
       const parts = data.output.split('TERRAFORM CODE:');
-      setSummary(parts[0]?.replace('SUMMARY:', '').trim());
+      const rawSummary = parts[0]?.replace('SUMMARY:', '').trim();
+      
+      // 2. Cost Extract Karo (Regex se) 💰
+      // Dhoondo agar kahi '$' aur number likha hai
+      const costMatch = rawSummary.match(/\$\d+(\.\d{2})?/);
+      if (costMatch) {
+        setCost(costMatch[0]); // e.g., "$18.00"
+      }
+
+      setSummary(rawSummary);
       setCode(parts[1]?.trim() || '');
       setIsDirty(false);
     }
@@ -37,12 +48,8 @@ function ResultNode({ data }: ResultNodeProps) {
     setIsDirty(false);
   };
 
-  // 2. New Download Logic 📥
-  // Note: Hum 'code' state use kar rahe hain. 
-  // Agar user ne editor me changes kiye hain, to wo bhi download honge!
   const handleDownload = () => {
     if (!code) return;
-
     const blob = new Blob([code], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -57,21 +64,30 @@ function ResultNode({ data }: ResultNodeProps) {
   return (
     <div className="rounded-xl border border-green-500/50 bg-black/90 shadow-2xl w-[500px] overflow-hidden flex flex-col h-[500px]">
 
-      {/* Header */}
-      <div className="flex items-center justify-between bg-gray-900 px-4 py-2 border-b border-green-500/30">
+      {/* --- HEADER START --- */}
+      <div className="flex items-center justify-between bg-gray-900 px-4 py-3 border-b border-green-500/30">
         
-        {/* Left Side: Title */}
-        <div className="flex items-center gap-2">
-          <Terminal size={16} className="text-green-400" />
-          <span className="text-sm font-bold text-green-100">
-            {isDirty ? 'Unsaved Changes*' : 'Infrastructure Code'}
-          </span>
+        {/* Left: Title + Cost Badge */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Terminal size={16} className="text-green-400" />
+            <span className="text-sm font-bold text-green-100">
+              Infrastructure
+            </span>
+          </div>
+
+          {/* 💰 COST BADGE (Visible in Header) */}
+          {cost && (
+            <div className="flex items-center gap-1 bg-green-500/20 px-2 py-0.5 rounded text-xs font-mono text-green-400 border border-green-500/30">
+              <DollarSign size={10} />
+              <span>{cost}/mo</span>
+            </div>
+          )}
         </div>
 
-        {/* Right Side: Actions Buttons */}
+        {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          
-          {/* Sync Button (Existing) */}
+          {/* Sync Button */}
           {isDirty && (
             <button
               onClick={handleSyncClick}
@@ -81,16 +97,15 @@ function ResultNode({ data }: ResultNodeProps) {
               }`}
             >
               {syncing ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-              {syncing ? 'Syncing...' : 'Update'}
             </button>
           )}
 
-          {/* 3. New Download Button (Always Visible if code exists) ⬇️ */}
+          {/* Download Button */}
           {code && (
             <button
               onClick={handleDownload}
               title="Download main.tf"
-              className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black transition-all"
+              className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold bg-gray-800 text-gray-300 hover:bg-green-500 hover:text-black transition-all"
             >
               <Download size={14} />
               <span>.tf</span>
@@ -98,11 +113,12 @@ function ResultNode({ data }: ResultNodeProps) {
           )}
         </div>
       </div>
+      {/* --- HEADER END --- */}
 
       <Handle type="target" position={Position.Left} className="w-3 h-3 !bg-green-500" />
 
-      {/* Editor Area (Monaco) */}
-      <div className="flex-1 relative">
+      {/* Editor Area */}
+      <div className="flex-1 relative bg-[#1e1e1e]">
         <Editor
           height="100%"
           defaultLanguage="hcl"
@@ -118,14 +134,8 @@ function ResultNode({ data }: ResultNodeProps) {
           }}
         />
       </div>
-
-      {/* Footer Summary */}
-      {summary && (
-        <div className="bg-gray-900/90 p-2 border-t border-gray-800 text-[10px] text-gray-400 truncate px-4 flex items-center gap-2">
-          <span>ℹ️</span>
-          <span className="truncate">{summary}</span>
-        </div>
-      )}
+      
+      {/* Note: Maine Footer hata diya kyunki Cost ab upar Header me hai */}
     </div>
   );
 }
