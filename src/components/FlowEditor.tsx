@@ -60,8 +60,8 @@ function Flow() {
     const [userInput, setUserInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-    const { data: session } = useSession(); 
-    const [saving, setSaving] = useState(false); 
+    const { data: session } = useSession();
+    const [saving, setSaving] = useState(false);
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
 
@@ -73,11 +73,11 @@ function Flow() {
             setLoading(true);
             try {
                 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
-                
+
                 // Backend se specific project fetch karo
                 // (Note: Backend me ye route hum abhi banayenge)
-                const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`); 
-                
+                const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`);
+
                 if (!response.ok) throw new Error("Project not found");
 
                 const data = await response.json();
@@ -85,7 +85,7 @@ function Flow() {
                 // Canvas par nodes aur edges set karo
                 if (data.nodes) setNodes(data.nodes);
                 if (data.edges) setEdges(data.edges);
-                
+
                 console.log(`Project loaded: ${data.name}`);
 
             } catch (error: any) {
@@ -119,7 +119,7 @@ function Flow() {
         try {
             const resultNode = nodes.find(n => n.id === '3');
             let terraformCode = "";
-            
+
             if (resultNode?.data?.output) {
                 const parts = resultNode.data.output.split('TERRAFORM CODE:');
                 terraformCode = parts.length > 1 ? parts[1].trim() : resultNode.data.output;
@@ -144,8 +144,8 @@ function Flow() {
             const data = await response.json();
 
             if (!response.ok) {
-                const errorMessage = typeof data.detail === 'string' 
-                    ? data.detail 
+                const errorMessage = typeof data.detail === 'string'
+                    ? data.detail
                     : JSON.stringify(data.detail, null, 2);
                 throw new Error(errorMessage);
             }
@@ -172,13 +172,13 @@ function Flow() {
         );
     }, [userInput, setNodes]);
 
-   const onConnect = useCallback(
+    const onConnect = useCallback(
         (params: Edge | Connection) => {
             setEdges((eds) => addEdge(params, eds));
             const newEdges = addEdge(params, edges);
             triggerVisualSync(nodes, newEdges);
         },
-        [setEdges, nodes, edges], 
+        [setEdges, nodes, edges],
     );
 
     // --- DRAG & DROP LOGIC ---
@@ -209,9 +209,9 @@ function Flow() {
             };
 
             setNodes((nds) => nds.concat(newNode));
-            triggerVisualSync(nodes.concat(newNode), edges); 
+            triggerVisualSync(nodes.concat(newNode), edges);
         },
-        [reactFlowInstance, nodes, edges, setNodes], 
+        [reactFlowInstance, nodes, edges, setNodes],
     );
 
     // --- RUN ARCHITECT LOGIC (AI Generation) ---
@@ -278,7 +278,7 @@ function Flow() {
     // --- VISUAL SYNC LOGIC ---
     const triggerVisualSync = async (currentNodes: Node[], currentEdges: Edge[]) => {
         console.log("🔄 Auto-Syncing Code from Visuals...");
-        setNodes((nds) => nds.map((n) => 
+        setNodes((nds) => nds.map((n) =>
             n.id === '3' ? { ...n, data: { ...n.data, output: "Syncing changes..." } } : n
         ));
 
@@ -303,7 +303,7 @@ function Flow() {
                 summary: "User Visual Update",
                 nodes: cloudNodes,
                 edges: cloudEdges,
-                terraform_code: "" 
+                terraform_code: ""
             };
 
             const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/sync/visual', {
@@ -320,14 +320,14 @@ function Flow() {
             if (data.detail) throw new Error(data.detail);
 
             const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
-            
-            setNodes((nds) => nds.map((n) => 
+
+            setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
             ));
 
         } catch (error: any) {
             console.error("Visual Sync Error:", error);
-            setNodes((nds) => nds.map((n) => 
+            setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: `Sync Error: ${error.message}` } } : n
             ));
         }
@@ -376,7 +376,7 @@ function Flow() {
 
             const staticNodes = nodes.filter(n => ['1', '2', '3'].includes(n.id));
             setNodes([...staticNodes, ...syncedNodes]);
-            setEdges([...initialEdges, ...syncedEdges]); 
+            setEdges([...initialEdges, ...syncedEdges]);
 
             const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
 
@@ -403,41 +403,58 @@ function Flow() {
         );
     }, [setNodes]);
 
-   return (
-        <div className="flex w-full h-screen bg-black">
+    return (
+        <div className="flex w-full h-screen bg-black overflow-hidden">
             {/* 1. LEFT SIDEBAR */}
             <Sidebar />
 
             {/* 2. MAIN CANVAS AREA */}
             <div className="flex-1 relative h-full">
-                
-                {/* 3. NEW HEADER (Buttons Cleaned Up) */}
-                <Header 
-                    session={session}
-                    onSave={saveProject}
-                    onRun={runFlow}
-                    saving={saving}
-                    loading={loading}
-                />
+                {/* Background Animation */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
+                </div>
+
+                {/* 3. NEW HEADER */}
+                <div className="relative z-20">
+                    <Header
+                        session={session}
+                        onSave={saveProject}
+                        onRun={runFlow}
+                        saving={saving}
+                        loading={loading}
+                    />
+                </div>
 
                 {/* 4. ReactFlow Canvas */}
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    onConnect={onConnect}
-                    onInit={setReactFlowInstance} 
-                    onDrop={onDrop}               
-                    onDragOver={onDragOver}       
-                    nodeTypes={nodeTypes}
-                    fitView
-                    style={{ background: '#000' }}
-                >
-                    <Controls style={{ filter: 'invert(1)' }} />
-                    <MiniMap nodeColor="#6865A5" style={{ backgroundColor: '#141414' }} maskColor="rgba(0,0,0, 0.7)" />
-                    <Background color="#555" gap={20} size={1} />
-                </ReactFlow>
+                <div className="absolute inset-0 z-10">
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onInit={setReactFlowInstance}
+                        onDrop={onDrop}
+                        onDragOver={onDragOver}
+                        nodeTypes={nodeTypes}
+                        fitView
+                        style={{ background: 'transparent' }}
+                    >
+                        <Controls className="!bg-black/50 !border-white/10 !fill-white shadow-2xl" />
+                        <MiniMap
+                            nodeColor={(n: any) => {
+                                if (n.type === 'promptNode') return '#06b6d4';
+                                if (n.type === 'aiNode') return '#8b5cf6';
+                                if (n.type === 'resultNode') return '#22c55e';
+                                return '#3b82f6';
+                            }}
+                            style={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.05)' }}
+                            maskColor="rgba(0,0,0, 0.8)"
+                        />
+                        <Background color="#222" gap={25} size={1} variant={"dots" as any} />
+                    </ReactFlow>
+                </div>
             </div>
         </div>
     );
