@@ -1,11 +1,12 @@
 import React, { memo } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useReactFlow} from 'reactflow';
 import {
     Server,       // EC2 ke liye
     Database,     // RDS/DB ke liye
     HardDrive,    // S3/Storage ke liye
     Network,      // Load Balancer/VPC ke liye
     CloudCog,     // Default/Generic ke liye
+    Trash2
 } from 'lucide-react';
 
 // --- HELPER FUNCTION: Icon Picker ---
@@ -30,13 +31,28 @@ const getServiceIcon = (label: string) => {
     return <CloudCog className="w-6 h-6 text-gray-400" />;
 };
 
-function CloudServiceNode({ data }: { data: { label: string } }) {
-    const icon = getServiceIcon(data.label);
+function CloudServiceNode({ id, data }: { id: string; data: { label: string } }) {
+  const { setNodes } = useReactFlow();
+  const icon = getServiceIcon(data.label);
+
+  const deleteNode = () => {
+    setNodes((nodes) => nodes.filter((node) => node.id !== id));
+  };
 
     return (
         // Node Container - Professional Diagram Style
         // Chhota size, rounded corners, subtle border
         <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-900/90 border border-gray-700 shadow-xl backdrop-blur-sm min-w-[100px] hover:border-blue-500 transition-colors">
+
+         {/* ❌ DELETE BUTTON */}
+      <button
+        onClick={deleteNode}
+        className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 p-1 rounded-full shadow-md "
+      >
+        <Trash2 size={12} className="text-white" />
+      </button>
+
+
 
             {/* Input Handle (Top) - For architecture diagrams, top-down or left-right works. Let's add all 4 for flexibility */}
             <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-gray-600" />
