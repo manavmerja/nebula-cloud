@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
     Server,       // EC2 ke liye
@@ -6,6 +6,7 @@ import {
     HardDrive,    // S3/Storage ke liye
     Network,      // Load Balancer/VPC ke liye
     CloudCog,     // Default/Generic ke liye
+    X,            // Delete button ke liye
 } from 'lucide-react';
 
 // --- HELPER FUNCTION: Icon Picker ---
@@ -30,31 +31,56 @@ const getServiceIcon = (label: string) => {
     return <CloudCog className="w-6 h-6 text-gray-400" />;
 };
 
-function CloudServiceNode({ data }: { data: { label: string } }) {
+function CloudServiceNode({ data, id }: { data: { label: string; isDark?: boolean; onDelete?: (id: string) => void }; id: string }) {
     const icon = getServiceIcon(data.label);
+    const isDark = data.isDark ?? true;
+    const [showDelete, setShowDelete] = useState(false);
+
+    const handleDelete = () => {
+        if (data.onDelete) {
+            data.onDelete(id);
+        }
+    };
 
     return (
-        // Node Container - Professional Diagram Style
-        // Chhota size, rounded corners, subtle border
-        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-900/90 border border-gray-700 shadow-xl backdrop-blur-sm min-w-[100px] hover:border-blue-500 transition-colors">
+        <div 
+            className={`relative flex flex-col items-center justify-center p-2 rounded-lg shadow-xl backdrop-blur-sm min-w-[100px] transition-colors ${
+                isDark 
+                    ? 'bg-gray-900/90 border border-gray-700 hover:border-blue-500' 
+                    : 'bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 hover:border-blue-400 shadow-blue-100/50'
+            }`}
+            onMouseEnter={() => setShowDelete(true)}
+            onMouseLeave={() => setShowDelete(false)}
+        >
+            {/* Delete Button */}
+            {showDelete && (
+                <button
+                    onClick={handleDelete}
+                    className={`absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                        isDark ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'
+                    } text-white z-10`}
+                >
+                    <X size={12} />
+                </button>
+            )}
 
-            {/* Input Handle (Top) - For architecture diagrams, top-down or left-right works. Let's add all 4 for flexibility */}
-            <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-gray-600" />
-            <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-gray-600" />
+            <Handle type="target" position={Position.Top} className={`w-2 h-2 ${isDark ? '!bg-gray-600' : '!bg-blue-400'}`} />
+            <Handle type="target" position={Position.Left} className={`w-2 h-2 ${isDark ? '!bg-gray-600' : '!bg-blue-400'}`} />
 
-            {/* Icon Section */}
-            <div className="mb-2 p-2 bg-black/50 rounded-full border border-gray-800">
+            <div className={`mb-2 p-2 rounded-full border ${
+                isDark ? 'bg-black/50 border-gray-800' : 'bg-white/80 border-blue-200 shadow-sm'
+            }`}>
                 {icon}
             </div>
 
-            {/* Label Section */}
-            <span className="text-[10px] font-medium text-gray-300 text-center leading-tight px-1">
+            <span className={`text-[10px] font-medium text-center leading-tight px-1 ${
+                isDark ? 'text-gray-300' : 'text-blue-800'
+            }`}>
                 {data.label}
             </span>
 
-            {/* Output Handle (Bottom & Right) */}
-            <Handle type="source" position={Position.Right} className="w-2 h-2 !bg-gray-600" />
-            <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-gray-600" />
+            <Handle type="source" position={Position.Right} className={`w-2 h-2 ${isDark ? '!bg-gray-600' : '!bg-blue-400'}`} />
+            <Handle type="source" position={Position.Bottom} className={`w-2 h-2 ${isDark ? '!bg-gray-600' : '!bg-blue-400'}`} />
         </div>
     );
 }
