@@ -42,12 +42,15 @@ function CloudServiceNode({ id, data }: { id: string; data: { label: string } })
     return (
         // Node Container - Professional Diagram Style
         // Chhota size, rounded corners, subtle border
-        <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-gray-900/90 border border-gray-700 shadow-xl backdrop-blur-sm min-w-[100px] hover:border-blue-500 transition-colors">
+        <div className="group relative flex flex-col items-center justify-center p-2 rounded-lg bg-gray-900/90 border border-gray-700 shadow-xl backdrop-blur-sm min-w-[100px] hover:border-blue-500 transition-colors">
+
 
          {/* ❌ DELETE BUTTON */}
       <button
         onClick={deleteNode}
-        className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 p-1 rounded-full shadow-md "
+         className="absolute -top-2 -right-2 bg-red-600 hover:bg-red-700 p-1 rounded-full shadow-md
+                   opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100
+                   transition-all duration-150"
       >
         <Trash2 size={12} className="text-white" />
       </button>
