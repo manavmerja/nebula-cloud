@@ -76,3 +76,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* global.css */
+.sidebar-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
