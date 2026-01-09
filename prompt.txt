@@ -1,0 +1,13 @@
+Abb jo ye First dashboard hai wo final karte hai aage badhate hai now aab aage kiya haam slide me likhe wo discuss karte hai 
+
+JO AWS me haame website Deploy karni ho toh 100 button dabane padte hai then server,database bhi haame choose karane padte hai then website deploy hoti hai but haamri website ussko terraform code me generate karti hai and agar AWS me account ho toh sirf terminal me run and deploy the website and hamari website visual node bhi generate karti hai so taaki user ko easy ho jaaye understand karne me 
+
+abb bhale hi slide jiyada ho jaaye wo chalega 
+Agar koy normal student bhi aaye toh usse wo slide change wala animation se pata chal jaaye ki ye website kuch aese work karti hai 
+
+And haam slide ko bahot interesting tarike se rakhege taaki user boring na ho paaye 
+Then microsoft enge ki tarah haam slide change hone par background color bhi change karege and haam slide ko left and right rakhege uske bajume haam 
+
+https://lottiefiles.com/featured-free-animations?page=3 
+ya koy aur website mese animation add karege 
+Abhi haam planning kar rahe hai me kahu tab hi code karege 
