@@ -1,17 +1,15 @@
-"use client"; // 👈 Ye zaroori hai state ke liye
+"use client";
 
 import { useState, Suspense } from 'react';
 import FlowEditor from '@/components/FlowEditor';
 import NebulaJourney from '@/components/NebulaJourney';
 
 export default function Home() {
-  // State to track if we should show the Intro Story
   const [showIntro, setShowIntro] = useState(true);
 
   return (
-    <main className="flex min-h-screen flex-col bg-black text-white">
+    <main className="flex h-screen flex-col bg-black text-white">
 
-      {/* Agar showIntro TRUE hai, toh sirf NebulaJourney dikhao */}
       {showIntro ? (
         <div className="fixed inset-0 z-50 bg-black">
           <NebulaJourney />
@@ -24,15 +22,18 @@ export default function Home() {
           </button>
         </div>
       ) : (
-        <div className="flex flex-col h-screen overflow-hidden">
-          {/* Dashboard with subtle background lines */}
+        <div className="flex flex-col h-full overflow-hidden">
+
           <div className="relative flex-1 flex flex-col">
-            <header className="relative z-10 p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl flex justify-between items-center">
+            {/* Header */}
+            <header className="shrink-0 relative z-10 p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl flex justify-between items-center">
               <div className="flex flex-col">
                 <h1 className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
                   NEBULA CLOUD
                 </h1>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">Infrastucture Engine</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">
+                  Infrastructure Engine
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
@@ -40,15 +41,20 @@ export default function Home() {
               </div>
             </header>
 
-            <div className="flex-grow relative overflow-hidden bg-[#050505]">
-              <Suspense fallback={
-                <div className="flex h-full w-full items-center justify-center text-cyan-500">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
-                    <span className="text-sm font-mono tracking-widest animate-pulse">BOOTING EDITOR...</span>
+            {/* Canvas Area */}
+            <div className="flex-1 relative overflow-hidden bg-[#050505]">
+              <Suspense
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center text-cyan-500">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+                      <span className="text-sm font-mono tracking-widest animate-pulse">
+                        BOOTING EDITOR...
+                      </span>
+                    </div>
                   </div>
-                </div>
-              }>
+                }
+              >
                 <FlowEditor />
               </Suspense>
             </div>
