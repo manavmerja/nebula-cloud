@@ -224,3 +224,4 @@ const NebulaJourney: React.FC<NebulaJourneyProps> = ({ onComplete }) => {
 };
 
 export default NebulaJourney;
+
