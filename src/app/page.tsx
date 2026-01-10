@@ -26,20 +26,6 @@ export default function Home() {
         <div className="flex flex-col h-full overflow-hidden">
           {/* Dashboard Content Wahi rahega */}
           <div className="relative flex-1 flex flex-col">
-            <header className="shrink-0 relative z-10 p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl flex justify-between items-center">
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
-                  NEBULA CLOUD
-                </h1>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">
-                  Infrastructure Engine
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] font-mono text-gray-400">System Ready</span>
-              </div>
-            </header>
 
             <div className="flex-1 relative overflow-hidden bg-[#050505]">
               <Suspense
