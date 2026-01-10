@@ -166,15 +166,15 @@ export default function Sidebar() {
 
       {/* Scroll Area */}
       <div
-  className="
-    flex-1
-    overflow-y-auto
-    overflow-x-hidden
-    overscroll-contain
-    px-4 py-4 space-y-6
-  "
-  onWheel={(e) => e.stopPropagation()}
->
+        className="
+          flex-1
+          overflow-y-auto
+          overflow-x-hidden
+          overscroll-contain
+          px-4 py-4 space-y-6
+        "
+        onWheel={(e) => e.stopPropagation()}
+      >
 
 
         {/* ⭐ Favorites */}
@@ -222,7 +222,8 @@ export default function Sidebar() {
                 return (
                   <div
                     key={label}
-                    ref={(el) => el && (flatList.current[index] = el)}
+                    // 👇 FIXED LINE HERE (Use curly braces to avoid returning value)
+                    ref={(el) => { if (el) flatList.current[index] = el; }}
                     draggable
                     onDragStart={(e) => onDragStart(e, label)}
                     onMouseDown={() => setActiveIndex(index)}

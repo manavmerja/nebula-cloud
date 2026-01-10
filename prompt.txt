@@ -11,3 +11,7 @@ Then microsoft enge ki tarah haam slide change hone par background color bhi cha
 https://lottiefiles.com/featured-free-animations?page=3 
 ya koy aur website mese animation add karege 
 Abhi haam planning kar rahe hai me kahu tab hi code karege 
+
+
+
+lottie: "https://lottie.host/eea4f60f-f08a-4060-8f02-8c1341d526e0/9mmfZznZFC.lottie",

@@ -12,7 +12,8 @@ export default function Home() {
 
       {showIntro ? (
         <div className="fixed inset-0 z-50 bg-black">
-          <NebulaJourney />
+          {/* 👇 YAHAN CHANGE HAI: onComplete prop pass kiya */}
+          <NebulaJourney onComplete={() => setShowIntro(false)} />
 
           <button
             onClick={() => setShowIntro(false)}
@@ -23,9 +24,8 @@ export default function Home() {
         </div>
       ) : (
         <div className="flex flex-col h-full overflow-hidden">
-
+          {/* Dashboard Content Wahi rahega */}
           <div className="relative flex-1 flex flex-col">
-            {/* Header */}
             <header className="shrink-0 relative z-10 p-6 border-b border-white/5 bg-black/40 backdrop-blur-xl flex justify-between items-center">
               <div className="flex flex-col">
                 <h1 className="text-2xl font-black bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent tracking-tighter">
@@ -41,7 +41,6 @@ export default function Home() {
               </div>
             </header>
 
-            {/* Canvas Area */}
             <div className="flex-1 relative overflow-hidden bg-[#050505]">
               <Suspense
                 fallback={
