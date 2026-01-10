@@ -82,3 +82,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.font-orbitron {
+  font-family: 'Orbitron', sans-serif !important;
+}
+

@@ -44,53 +44,71 @@ function AINode({ data }: { data: { model?: string } }) {
             </div>
 
             {/* 🔮 AI Core – Radial Glow */}
-            <div className="flex justify-center items-center my-4 nodrag">
-                <div className="relative flex items-center justify-center">
+<div className="flex flex-col items-center my-4 nodrag">
+    <div className="relative flex items-center justify-center">
 
-                    {/* Outer Glow */}
-                    <div
-                        className="
-                            absolute
-                            w-36 h-36
-                            rounded-full
-                            bg-cyan-400/30
-                            blur-2xl
-                            animate-pulse
-                        "
-                    />
+        {/* Outer Glow */}
+        <div
+            className="
+                absolute
+                w-36 h-36
+                rounded-full
+                bg-cyan-400/30
+                blur-2xl
+                animate-pulse
+            "
+        />
 
-                    {/* Inner Glow */}
-                    <div
-                        className="
-                            absolute
-                            w-18 h-18
-                            rounded-full
-                            bg-cyan-300/40
-                            blur-xl
-                        "
-                    />
+        {/* Inner Glow */}
+        <div
+            className="
+                absolute
+                w-18 h-18
+                rounded-full
+                bg-cyan-300/40
+                blur-xl
+            "
+        />
 
-                    {/* Core */}
-                    <div
-                        className="
-                            relative
-                            w-24 h-24
-                            rounded-full
-                            bg-white
-                            shadow-[inset_0_0_20px_rgba(0,0,0,0.15)]
-                            flex items-center justify-center
-                        "
-                    >
-                        {animationData && (
-                            <Lottie
-                                animationData={animationData}
-                                loop
-                                className="w-20 h-20"
-                            />
-                        )}
-                    </div>
-                </div>
-            </div>
+        {/* Core */}
+        <div
+            className="
+                relative
+                w-24 h-24
+                rounded-full
+                bg-white
+                shadow-[inset_0_0_20px_rgba(0,0,0,0.15)]
+                flex items-center justify-center
+            "
+        >
+            {animationData && (
+                <Lottie
+                    animationData={animationData}
+                    loop
+                    className="w-20 h-20"
+                />
+            )}
+        </div>
+    </div>
+
+    {/* ✨ Nebula Text */}
+    <div className="mt-3 text-center pointer-events-none select-none">
+        <p
+            className="
+                text-sm
+                font-orbitron
+                tracking-[0.35em]
+                uppercase
+                text-cyan-300
+                drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]
+                font-family: 'Orbitron', sans-serif;
+            "
+        >
+            Nebula
+        </p>
+    </div>
+</div>
+
 
             {/* Output Handle */}
             <Handle
