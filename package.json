@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint"
   },
+  
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@lottiefiles/dotlottie-react": "^0.17.12",

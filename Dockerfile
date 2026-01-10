@@ -24,3 +24,4 @@ COPY ./nebula-backend/app /code/app
 # Ab structure hoga: /code/app/main.py
 # To 'app.main' command sahi chalegi
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+
