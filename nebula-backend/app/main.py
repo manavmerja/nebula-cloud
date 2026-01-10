@@ -46,3 +46,4 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Nebula Cloud Backend 🚀"}
+
