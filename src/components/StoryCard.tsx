@@ -34,7 +34,7 @@ const StoryCard: React.FC<StoryCardProps> = ({ slide }) => {
     <div className="w-full max-w-7xl h-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16 px-6">
       
       {/* --- LEFT: TEXT CONTENT (INSIDE GLASS BOX) --- */}
-      {/* 👇 Sirf is div par Glass Effect lagaya hai */}
+      {/* Sirf is div par Glass Effect lagaya hai */}
       <div className="flex-1 p-10 md:p-14 bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col justify-center min-h-[400px]">
         
         {/* 1. TAG (Simple Bold Text) */}

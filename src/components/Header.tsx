@@ -41,13 +41,10 @@ export default function Header({
                     <div className="text-[9px] uppercase tracking-[0.2em] text-gray-500 font-bold">Infrastructure Engine</div>
                 </div>
             </div>
-
-<<<<<<< HEAD
             {/* RIGHT — RUN + SAVE + DASHBOARD + AUTH */}
-=======
+
             
             
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
             <div className="flex items-center gap-3">
 
                 {/* 1. RUN BUTTON */}

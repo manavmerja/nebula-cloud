@@ -1,0 +1,12 @@
+Create a secure AWS infrastructure with a VPC spanning 2 Availability Zones.
+It must have Public Subnets for a Load Balancer and Private Subnets for the Backend.
+Deploy an Internet-facing Application Load Balancer (ALB) that routes traffic to an Auto Scaling Group of EC2 instances running in Private Subnets.
+Also, include a Multi-AZ RDS PostgreSQL database that is securely accessible ONLY from the EC2 instances, not the internet.
+
+
+provide me high available and scalable three tier architecture
+
+
+
+
+Provide me a three tire Web Architrecture with aaplication layer, web layer and Database layer. with three ec2 and load balancer in web layer and assuming it will be having traffic of 100 user and the architecture should Highl available.

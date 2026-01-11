@@ -18,8 +18,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
-/* ---------------- AWS SERVICE DATA ---------------- */
-
 const awsServices = [
   {
     category: 'Compute',
@@ -155,7 +153,7 @@ export default function Sidebar() {
       <div className="p-4 border-b border-gray-800">
         <h2 className="text-lg font-bold text-white">AWS Services</h2>
 
-        {/* 🔍 Search */}
+        {/* Search */}
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -177,7 +175,7 @@ export default function Sidebar() {
       >
 
 
-        {/* ⭐ Favorites */}
+        {/*  Favorites */}
         {favorites.length > 0 && (
           <div>
             <h3 className="text-xs text-yellow-400 mb-3 uppercase">Favorites</h3>
@@ -222,7 +220,7 @@ export default function Sidebar() {
                 return (
                   <div
                     key={label}
-                    // 👇 FIXED LINE HERE (Use curly braces to avoid returning value)
+                    //  FIXED LINE HERE (Use curly braces to avoid returning value)
                     ref={(el) => { if (el) flatList.current[index] = el; }}
                     draggable
                     onDragStart={(e) => onDragStart(e, label)}

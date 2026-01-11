@@ -72,7 +72,7 @@ function Flow() {
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
 
-    // --- LOAD PROJECT LOGIC 🔄 ---
+    //LOAD PROJECT LOGIC 
     useEffect(() => {
         const loadProject = async () => {
             if (!projectId) return; // Agar URL me ID nahi hai, to ruk jao
@@ -106,7 +106,7 @@ function Flow() {
         loadProject();
     }, [projectId, setNodes, setEdges]); // Dependencies
 
-    // --- SAVE PROJECT LOGIC 💾 ---
+    //SAVE PROJECT LOGIC 
     const saveProject = async () => {
         if (!session || !session.user) {
             alert("Please login to save your project! 🔒");
@@ -161,7 +161,7 @@ function Flow() {
 
         } catch (error: any) {
             console.error("Save Error:", error);
-            alert(`❌ Save Failed:\n${error.message}`);
+            alert(` Save Failed:\n${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -321,7 +321,7 @@ function Flow() {
 
     // --- VISUAL SYNC LOGIC ---
     const triggerVisualSync = async (currentNodes: Node[], currentEdges: Edge[]) => {
-        console.log("🔄 Auto-Syncing Code from Visuals...");
+        console.log(" Auto-Syncing Code from Visuals...");
         setNodes((nds) => nds.map((n) =>
             n.id === '3' ? { ...n, data: { ...n.data, output: "Syncing changes..." } } : n
         ));

@@ -7,7 +7,7 @@ import { FaArrowRight, FaArrowLeft, FaRocket } from "react-icons/fa6";
 import HeroSection from "@/components/HeroSection";
 import StoryCard from "@/components/StoryCard";
 
-// 👇 Slide Data Types
+// Slide Data Types
 interface SlideBase {
   id: number;
   type: string;
@@ -78,7 +78,7 @@ const SLIDES: Slide[] = [
   },
 ];
 
-// 👇 Define Prop Type: Parent se signal lega ki kya karna hai
+//  Define Prop Type: Parent se signal lega ki kya karna hai
 interface NebulaJourneyProps {
   onComplete?: () => void;
 }
@@ -112,7 +112,7 @@ const variants: Variants = {
   }),
 };
 
-// 👇 Props receive kar rahe hain
+//  Props receive kar rahe hain
 const NebulaJourney: React.FC<NebulaJourneyProps> = ({ onComplete }) => {
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -139,7 +139,7 @@ const NebulaJourney: React.FC<NebulaJourneyProps> = ({ onComplete }) => {
 
   const handleExit = () => {
     setIsExiting(true);
-    // 👇 Router.push hata diya. Ab ye Parent ka function call karega.
+    // Router.push hata diya. Ab ye Parent ka function call karega.
     setTimeout(() => {
       if (onComplete) onComplete();
     }, 1200);
@@ -154,7 +154,7 @@ const NebulaJourney: React.FC<NebulaJourneyProps> = ({ onComplete }) => {
       className="relative w-full h-screen overflow-hidden flex flex-col items-center justify-center transition-colors duration-1000 ease-in-out"
       style={{ backgroundColor: activeSlide.bgColor }}
     >
-      {/* 🌌 WARP OVERLAY */}
+      {/*WARP OVERLAY */}
       <AnimatePresence>
         {isExiting && (
           <motion.div

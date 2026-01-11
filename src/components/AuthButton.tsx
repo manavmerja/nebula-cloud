@@ -7,13 +7,6 @@ export default function AuthButton() {
   if (session) {
     return (
       <div className="flex items-center gap-3 bg-gray-800/50 px-3 py-1.5 rounded-full border border-gray-700">
-<<<<<<< HEAD
-
-        {/* User Info (Text) */}
-=======
-        
-      
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
         <div className="flex flex-col text-right hidden sm:block">
              <span className="text-xs font-bold text-gray-200 leading-tight">
                  {session.user?.name}
@@ -22,36 +15,18 @@ export default function AuthButton() {
 
         
         {session.user?.image ? (
-<<<<<<< HEAD
-            <img
-                src={session.user.image}
-                alt="Profile"
-                // Ye style tag force karega size ko
-=======
             <img 
                 src={session.user.image} 
                 alt="Profile" 
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
                 style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
                 className="border border-gray-500"
             />
         ) : (
-<<<<<<< HEAD
-
-=======
-            
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
             <div style={{ width: '32px', height: '32px', borderRadius: '50%' }} className="bg-gray-600 flex items-center justify-center border border-gray-500">
                 👤
             </div>
         )}
-<<<<<<< HEAD
 
-        {/* Logout Button */}
-=======
-        
-        
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
         <button
           onClick={() => signOut()}
           className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider ml-2"
@@ -62,11 +37,7 @@ export default function AuthButton() {
     );
   }
 
-<<<<<<< HEAD
-  // LOGIN BUTTONS 
-=======
-  
->>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
+
   return (
     <div className="flex gap-2">
         <button
