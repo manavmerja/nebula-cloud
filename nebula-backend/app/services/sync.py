@@ -5,12 +5,8 @@ from app.models.schema import ArchitectureState, CloudNode, CloudEdge
 from typing import List
 
 # --- SETUP PARSER ---
-# Hum chahte hain ki output wapas wahi Standard JSON format me aaye
 parser = JsonOutputParser(pydantic_object=ArchitectureState)
 
-# ==========================================
-# AGENT 1: Code -> Visual (The Parser)
-# ==========================================
 CODE_SYNC_PROMPT = """
 You are a Cloud DevOps Expert.
 The user has MANUALLY updated the Terraform code. 
@@ -48,9 +44,6 @@ async def sync_state_from_code(current_state: dict, new_code: str):
     })
     return result
 
-# ==========================================
-# AGENT 2: Visual -> Code (The Generator)
-# ==========================================
 VISUAL_SYNC_PROMPT = """
 You are a Cloud Architect.
 The user has MANUALLY updated the visual diagram (Nodes/Edges).

@@ -3,12 +3,10 @@ from langchain_core.output_parsers import JsonOutputParser
 from app.services.llm_engine import get_best_available_model
 from app.models.schema import ArchitectureState
 
-# --- 1. SETUP PARSER ---
-# Ye AI ko batayega: "Mujhe output 'ArchitectureState' jaisa chahiye"
+#1. SETUP PARSER 
 parser = JsonOutputParser(pydantic_object=ArchitectureState)
 
-# --- 2. SETUP PROMPT ---
-# Ye instructions hain AI ke liye
+#2. SETUP PROMPT 
 PROMPT_TEMPLATE = """
 You are an expert Cloud Architect and DevOps Engineer.
 Your goal is to design a cloud architecture based on the user's request.
@@ -33,7 +31,7 @@ prompt = PromptTemplate(
     partial_variables={"format_instructions": parser.get_format_instructions()}
 )
 
-# --- 3. THE GENERATOR FUNCTION ---
+#3. THE GENERATOR FUNCTION 
 async def generate_architecture_json(user_prompt: str):
     """
     Main function called by API.
@@ -42,21 +40,18 @@ async def generate_architecture_json(user_prompt: str):
     # 1. Get Model (Groq or HF)
     model = get_best_available_model()
 
-    # 2. Create Chain (Prompt -> Model -> Parser)
-    # Pipe syntax ('|') LangChain ki power hai
+    
     chain = prompt | model | parser
 
     try:
-        # 3. Run the Chain
         print(f"🧠 Processing Prompt: {user_prompt}")
         result = chain.invoke({"prompt": user_prompt})
         
-        # 4. Result is already a Python Dictionary (Validated by Parser)
         return result
 
     except Exception as e:
         print(f"❌ Generation Error: {e}")
-        # Fallback error response
+        
         return {
             "error": str(e),
             "summary": "AI failed to generate architecture.",

@@ -2,13 +2,11 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 
-# Database mein Project Save karne ke liye Schema
 class ProjectSchema(BaseModel):
     user_email: str
     name: str
     description: Optional[str] = None
     
-    # Architecture Data
     nodes: List[Dict[str, Any]] 
     edges: List[Dict[str, Any]]
     

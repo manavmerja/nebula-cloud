@@ -1,5 +1,4 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-# Hum seedha tumhari settings file use karenge jo humne fix ki thi
 from app.core.config import settings 
 
 class Database:
@@ -10,7 +9,6 @@ db = Database()
 async def connect_to_mongo():
     """App start hone par Database connect karega"""
     try:
-        # 🚨 Change: settings.MONGO_URI use kar rahe hain
         db.client = AsyncIOMotorClient(settings.MONGO_URI)
         await db.client.admin.command('ping')
         print("✅ Successfully connected to MongoDB Atlas!")
@@ -23,5 +21,4 @@ async def close_mongo_connection():
         print("🛑 MongoDB connection closed.")
 
 def get_database():
-    # 🚨 Change: settings.DATABASE_NAME use kar rahe hain (Jo ab 'nebula_db' hai)
     return db.client[settings.DATABASE_NAME]
