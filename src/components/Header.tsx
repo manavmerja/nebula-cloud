@@ -1,8 +1,7 @@
 "use client";
 
-
 import React from 'react';
-import { Play, Loader2, Save } from 'lucide-react';
+import { Play, Loader2, Save, LayoutDashboard } from 'lucide-react'; // ✅ Added LayoutDashboard import
 import Link from "next/link";
 import AuthButton from "@/components/AuthButton";
 import Image from "next/image";
@@ -43,11 +42,10 @@ export default function Header({
                 </div>
             </div>
 
-            {/* CENTER removed per request */}
-
-            {/* RIGHT — RUN + SAVE + AUTH */}
+            {/* RIGHT — RUN + SAVE + DASHBOARD + AUTH */}
             <div className="flex items-center gap-3">
-                {/* RUN BUTTON */}
+
+                {/* 1. RUN BUTTON */}
                 <button
                     onClick={onRun}
                     disabled={loading}
@@ -62,7 +60,7 @@ export default function Header({
                     <span className="hidden sm:inline">Run</span>
                 </button>
 
-                {/* SAVE BUTTON */}
+                {/* 2. SAVE BUTTON */}
                 <button
                     onClick={onSave}
                     disabled={saving}
@@ -80,7 +78,17 @@ export default function Header({
                     <span className="hidden sm:inline">Save</span>
                 </button>
 
-                {/* GITHUB + GOOGLE AUTH */}
+                {/* 3.  DASHBOARD BUTTON (Only shows if logged in) */}
+                {session && (
+                    <Link href="/dashboard">
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold border border-gray-600 bg-gray-800 hover:bg-gray-700 text-purple-400 hover:text-purple-300 transition-all">
+                            <LayoutDashboard size={16} />
+                            <span className="hidden sm:inline">Dashboard</span>
+                        </button>
+                    </Link>
+                )}
+
+                {/* 4. GITHUB + GOOGLE AUTH */}
                 <AuthButton />
             </div>
 
