@@ -28,6 +28,4 @@ if (process.env.NODE_ENV === "development") {
   clientPromise = client.connect();
 }
 
-// Export a module-scoped MongoClient promise.
-// Isse hum NextAuth adapter mein use karenge.
 export default clientPromise;

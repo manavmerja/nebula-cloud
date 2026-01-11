@@ -1,0 +1,41 @@
+🟢 Phase 1: Core UI & Animation (The "Wow" Factor)
+Abhi hum yahan hain. Ye judges ko impress karne ke liye sabse zaruri hai.
+
+Hero Section Complete Karna:
+
+Abhi humne FloatingLayer aur NebulaCard banaya hai.
+
+Hume HeroSection.tsx (Slide 0) ko assemble karna hai.
+
+Story Slides (The Journey):
+
+StoryCard.tsx banana hai (jo humne glassmorphism aur left-text/right-animation ke saath design kiya tha).
+
+Wo 4 slides ka data (SLIDES array) set karna hai.
+
+Main Controller (NebulaJourney.tsx):
+
+Wo "Warp Speed" wala logic aur "Scroll/Navigation" system jodna hai.
+
+Isse hamara Landing Page 100% ready ho jayega.
+
+🟡 Phase 2: The Main Dashboard (The "Tool")
+Jab user "Enter Nebula" dabayega, toh ye khulega. Ye actual product hai.
+
+Layout Integration:
+
+Sidebar already ban chuka hai.
+
+Hume ek MainLayout banana hoga jisme Left Sidebar aur Right Canvas ho.
+
+Flow Editor (React Flow):
+
+Hume reactflow install karna hoga.
+
+Ek canvas jahan user AWS services (nodes) ko drag-drop kar sake.
+
+Drag & Drop Logic: Sidebar se drag karke Canvas pe drop karne wala code.
+
+Top Bar (Header):
+
+Jahan "Generate Terraform", "Deploy", aur "Cost Estimate" ke buttons honge.

@@ -13,8 +13,8 @@ def get_groq_model():
         
     return ChatGroq(
         groq_api_key=settings.GROQ_API_KEY,
-        model_name="llama-3.3-70b-versatile", # Powerful model
-        temperature=0.2,              # Kam creativity, zyada accuracy
+        model_name="llama-3.3-70b-versatile", 
+        temperature=0.2,              
         max_tokens=4096
     )
 

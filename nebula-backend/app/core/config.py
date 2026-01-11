@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # Database Settings
     MONGO_URI: str = "mongodb://localhost:27017"
-    DATABASE_NAME: str = "nebula_db"  # 👈 YE LINE MISSING THI!
+    DATABASE_NAME: str = "nebula_db"  
     
     # CORS (Frontend Connection)
     BACKEND_CORS_ORIGINS: List[str] = ["*"]

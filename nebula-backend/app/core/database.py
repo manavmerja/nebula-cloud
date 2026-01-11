@@ -1,5 +1,4 @@
 from motor.motor_asyncio import AsyncIOMotorClient
-# 🚨 Change: Hum 'os' aur 'dotenv' hata rahe hain
 # Hum seedha tumhari settings file use karenge jo humne fix ki thi
 from app.core.config import settings 
 
@@ -25,5 +24,4 @@ async def close_mongo_connection():
 
 def get_database():
     # 🚨 Change: settings.DATABASE_NAME use kar rahe hain (Jo ab 'nebula_db' hai)
-    # Ye wo 'NoneType' error fix karega
     return db.client[settings.DATABASE_NAME]
