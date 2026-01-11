@@ -11,20 +11,25 @@ import ReactFlow, {
     Connection,
     Edge,
     ReactFlowProvider,
-    MarkerType, // Arrow heads ke liye
+    MarkerType,
     Node,
+    useReactFlow,
 } from 'reactflow';
-import { useSession } from "next-auth/react"; // <--- Session hook
+import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
-// Components Imports
-import Header from './Header'; // <--- NEW HEADER IMPORT
-import 'reactflow/dist/style.css';
+// --- IMPORTS ---
+import Header from './Header';
+import Sidebar from './Sidebar';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
-import Sidebar from './Sidebar';
+
+// 1. IMPORT THE LAYOUT UTILITY WE JUST MADE
+import { getLayoutedElements } from './layoutUtils';
+
+import 'reactflow/dist/style.css';
 
 // --- TYPES ---
 type NodeData = {
@@ -37,9 +42,9 @@ type NodeData = {
 
 // --- INITIAL DATA ---
 const initialNodes: Node<NodeData>[] = [
-    { id: '1', type: 'promptNode', data: { text: '' }, position: { x: 50, y: 250 } },
-    { id: '2', type: 'aiNode', data: { model: 'groq-llama' }, position: { x: 450, y: 250 } },
-    { id: '3', type: 'resultNode', data: { output: '' }, position: { x: 900, y: 250 } },
+    { id: '1', type: 'promptNode', data: { text: '' }, position: { x: 50, y: 100 } },
+    { id: '2', type: 'aiNode', data: { model: 'groq-llama' }, position: { x: 450, y: 100 } },
+    { id: '3', type: 'resultNode', data: { output: '' }, position: { x: 900, y: 100 } },
 ];
 
 const initialEdges = [
@@ -65,24 +70,20 @@ function Flow() {
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
 
-    // --- LOAD PROJECT LOGIC 🔄 ---
+    // --- LOAD PROJECT LOGIC  ---
     useEffect(() => {
         const loadProject = async () => {
-            if (!projectId) return; // Agar URL me ID nahi hai, to ruk jao
+            if (!projectId) return;
 
             setLoading(true);
             try {
                 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
-
-                // Backend se specific project fetch karo
-                // (Note: Backend me ye route hum abhi banayenge)
                 const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`);
 
                 if (!response.ok) throw new Error("Project not found");
 
                 const data = await response.json();
 
-                // Canvas par nodes aur edges set karo
                 if (data.nodes) setNodes(data.nodes);
                 if (data.edges) setEdges(data.edges);
 
@@ -97,7 +98,7 @@ function Flow() {
         };
 
         loadProject();
-    }, [projectId, setNodes, setEdges]); // Dependencies
+    }, [projectId, setNodes, setEdges]);
 
     // --- SAVE PROJECT LOGIC 💾 ---
     const saveProject = async () => {
@@ -150,7 +151,7 @@ function Flow() {
                 throw new Error(errorMessage);
             }
 
-            alert("✅ Project Saved Successfully!");
+            alert(" Project Saved Successfully!");
 
         } catch (error: any) {
             console.error("Save Error:", error);
@@ -214,7 +215,7 @@ function Flow() {
         [reactFlowInstance, nodes, edges, setNodes],
     );
 
-    // --- RUN ARCHITECT LOGIC (AI Generation) ---
+    // --- RUN ARCHITECT LOGIC (AI Generation + Dagre Layout) ---
     const runFlow = async () => {
         const inputNode = nodes.find(n => n.id === '1');
         const promptText = inputNode?.data?.text;
@@ -230,7 +231,6 @@ function Flow() {
         ));
 
         try {
-            // Using Localhost Backend now
             const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -242,18 +242,21 @@ function Flow() {
 
             const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
 
+            // Update result node
             setNodes((nds) => nds.map((n) =>
                 n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
             ));
 
-            const newGeneratedNodes = data.nodes.map((node: any, index: number) => ({
+            // --- 2. PREPARE NODES FOR DAGRE ---
+            // Create raw nodes with 0,0 position first
+            const rawNodes = data.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
                 data: { label: node.label },
-                position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) },
+                position: { x: 0, y: 0 },
             }));
 
-            const newGeneratedEdges = data.edges.map((edge: any) => ({
+            const rawEdges = data.edges.map((edge: any) => ({
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
@@ -262,8 +265,43 @@ function Flow() {
                 markerEnd: { type: MarkerType.ArrowClosed },
             }));
 
-            setNodes((prev) => [...prev, ...newGeneratedNodes]);
-            setEdges((prev) => [...prev, ...newGeneratedEdges]);
+            // --- 3. APPLY LAYOUT ALGORITHM ---
+            // 'LR' = Left to Right (horizontal tree)
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                rawNodes,
+                rawEdges,
+                'LR'
+            );
+
+            // --- 4. SHIFT POSITION ---
+            // We want the new diagram to appear BELOW the main control row (x:50, y:400)
+            const X_OFFSET = 50;
+            const Y_OFFSET = 400;
+
+            const finalNodes = layoutedNodes.map((node) => ({
+                ...node,
+                position: {
+                    x: node.position.x + X_OFFSET,
+                    y: node.position.y + Y_OFFSET
+                }
+            }));
+
+            // --- 5. UPDATE STATE ---
+            // Keep the static control nodes (ID 1, 2, 3), remove old generated ones
+            setNodes((prev) => {
+                const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
+                return [...staticNodes, ...finalNodes];
+            });
+
+            setEdges((prev) => {
+                const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
+                return [...staticEdges, ...layoutedEdges];
+            });
+
+            // Zoom to fit the new layout
+            setTimeout(() => {
+                reactFlowInstance?.fitView({ padding: 0.2, duration: 800 });
+            }, 100);
 
         } catch (error: any) {
             console.error("Error:", error);
@@ -358,14 +396,15 @@ function Flow() {
             const data = await response.json();
             if (data.detail) throw new Error(data.detail);
 
-            const syncedNodes = data.nodes.map((node: any, index: number) => ({
+            // 1. Process new nodes from code
+            const rawNodes = data.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
                 data: { label: node.label },
-                position: { x: 250 + (index * 180), y: 450 + (index % 2 * 80) },
+                position: { x: 0, y: 0 },
             }));
 
-            const syncedEdges = data.edges.map((edge: any) => ({
+            const rawEdges = data.edges.map((edge: any) => ({
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
@@ -374,9 +413,33 @@ function Flow() {
                 markerEnd: { type: MarkerType.ArrowClosed },
             }));
 
-            const staticNodes = nodes.filter(n => ['1', '2', '3'].includes(n.id));
-            setNodes([...staticNodes, ...syncedNodes]);
-            setEdges([...initialEdges, ...syncedEdges]);
+            // 2. Apply Dagre Layout to sync result
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                rawNodes,
+                rawEdges,
+                'LR'
+            );
+
+            // 3. Shift them
+            const X_OFFSET = 50;
+            const Y_OFFSET = 400;
+            const finalSyncedNodes = layoutedNodes.map((node) => ({
+                ...node,
+                position: {
+                    x: node.position.x + X_OFFSET,
+                    y: node.position.y + Y_OFFSET
+                }
+            }));
+
+            // 4. Update State
+            setNodes((prev) => {
+                const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
+                return [...staticNodes, ...finalSyncedNodes];
+            });
+            setEdges((prev) => {
+                const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
+                return [...staticEdges, ...layoutedEdges];
+            });
 
             const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
 
