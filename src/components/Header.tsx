@@ -7,11 +7,11 @@ import AuthButton from "@/components/AuthButton";
 import Image from "next/image";
 
 interface HeaderProps {
-    session: any;       // Login session data
-    onSave: () => void; // Save function
-    onRun: () => void;  // Run function
-    saving: boolean;    // Save loading state
-    loading: boolean;   // Run loading state
+    session: any;       
+    onSave: () => void; 
+    onRun: () => void;  
+    saving: boolean;    
+    loading: boolean;   
 }
 
 export default function Header({
@@ -24,7 +24,7 @@ export default function Header({
     return (
         <header className="w-full flex items-center justify-between px-6 py-4 bg-gray-900/90 border-b border-gray-800 backdrop-blur-md">
 
-            {/* LEFT — LOGO + NAME */}
+            
             <div className="flex items-center gap-3">
                 <Image
                     src="/nebula-new.png"
@@ -42,7 +42,12 @@ export default function Header({
                 </div>
             </div>
 
+<<<<<<< HEAD
             {/* RIGHT — RUN + SAVE + DASHBOARD + AUTH */}
+=======
+            
+            
+>>>>>>> 0a273c087297b56f0dc0d86b23bc0b30f00a9606
             <div className="flex items-center gap-3">
 
                 {/* 1. RUN BUTTON */}

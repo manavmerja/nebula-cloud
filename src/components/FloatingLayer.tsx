@@ -12,7 +12,7 @@ import { VscCode } from "react-icons/vsc";
 const FloatingLayer = () => {
     const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-    // Mouse Move Logic
+    
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             const x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -25,17 +25,16 @@ const FloatingLayer = () => {
     }, []);
 
     const elements = [
-        // --- 1. LOTTIE ANIMATIONS (Transparent URLs fixed) ---
+        
     {
       id: "lottie-1",
       type: "lottie",
-      // 👇 Maine '/embed/' hata diya hai taaki transparent rahe
       src: "https://lottie.host/83badb25-f21a-443a-8cc6-2aa1072f30b4/1fBlAE94FU.lottie", 
-      size: "w-56 h-56", // Thoda size badhaya taaki rocket clear dikhe
+      size: "w-56 h-56", 
       position: "top-[5%] right-[8%]",
       depth: 25,
     },
-        // New Animation 1 (Bottom Left - Cloud/Tech)
+        
         {
             id: "lottie-2",
             type: "lottie",
@@ -44,7 +43,7 @@ const FloatingLayer = () => {
             position: "bottom-[10%] left-[5%]",
             depth: 20,
         },
-        // New Animation 2 (Top Left - AI/Brain)
+        
         {
             id: "lottie-3",
             type: "lottie",
@@ -54,7 +53,6 @@ const FloatingLayer = () => {
             depth: 30,
         },
 
-        // --- 2. TECH ICONS (Populated) ---
         { id: 1, component: <FaReact className="text-cyan-400" />, size: 35, position: "top-[25%] left-[20%]", depth: 15 },
         { id: 2, component: <FaPython className="text-yellow-400" />, size: 30, position: "bottom-[30%] right-[15%]", depth: 15 },
         { id: 3, component: <SiTypescript className="text-blue-500" />, size: 28, position: "bottom-[40%] left-[25%]", depth: 10 },
@@ -66,7 +64,6 @@ const FloatingLayer = () => {
         { id: 9, component: <FiGithub className="text-white" />, size: 30, position: "bottom-[15%] left-[45%]", depth: 15 },
         { id: 10, component: <FaLinux className="text-yellow-200" />, size: 26, position: "top-[60%] right-[10%]", depth: 12 },
 
-        // --- 3. BACKGROUND PARTICLES (Subtle & Scattered) ---
         { id: 11, component: <LuBinary className="text-white/10" />, size: 18, position: "top-[30%] left-[40%]", depth: 5 },
         { id: 12, component: <LuCode className="text-white/10" />, size: 20, position: "top-[10%] right-[20%]", depth: 5 },
         { id: 13, component: <LuCpu className="text-white/10" />, size: 22, position: "bottom-[10%] left-[50%]", depth: 8 },
@@ -90,7 +87,6 @@ const FloatingLayer = () => {
                     transition={{ type: "spring", stiffness: 50, damping: 20 }}
                 >
                     {el.type === "lottie" ? (
-                        // Lottie Container (Ab transparent hai)
                         <div className={`${el.size} opacity-90 drop-shadow-[0_0_25px_rgba(100,100,255,0.3)]`}>
                             <DotLottieReact
                                 src={el.src}
@@ -99,7 +95,6 @@ const FloatingLayer = () => {
                             />
                         </div>
                     ) : (
-                        // Icon Container
                         <div style={{ fontSize: el.size }} className="drop-shadow-lg opacity-80 hover:opacity-100 transition-opacity">
                             {el.component}
                         </div>

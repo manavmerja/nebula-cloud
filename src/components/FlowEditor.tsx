@@ -11,20 +11,22 @@ import ReactFlow, {
     Connection,
     Edge,
     ReactFlowProvider,
-    MarkerType,
+    MarkerType, // Arrow heads ke liye
     Node,
     useReactFlow,
 } from 'reactflow';
-import { useSession } from "next-auth/react";
+import { useSession } from "next-auth/react"; // <--- Session hook
 import { useSearchParams } from "next/navigation";
 
-// --- IMPORTS ---
-import Header from './Header';
+// Components Imports
+import Header from './Header'; 
 import Sidebar from './Sidebar';
+import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
+
 
 // 1. IMPORT THE LAYOUT UTILITY WE JUST MADE
 import { getLayoutedElements } from './layoutUtils';
@@ -70,20 +72,24 @@ function Flow() {
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
 
-    // --- LOAD PROJECT LOGIC  ---
+    // --- LOAD PROJECT LOGIC 🔄 ---
     useEffect(() => {
         const loadProject = async () => {
-            if (!projectId) return;
+            if (!projectId) return; // Agar URL me ID nahi hai, to ruk jao
 
             setLoading(true);
             try {
                 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+
+                // Backend se specific project fetch karo
+                // (Note: Backend me ye route hum abhi banayenge)
                 const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`);
 
                 if (!response.ok) throw new Error("Project not found");
 
                 const data = await response.json();
 
+                // Canvas par nodes aur edges set karo
                 if (data.nodes) setNodes(data.nodes);
                 if (data.edges) setEdges(data.edges);
 
@@ -98,7 +104,7 @@ function Flow() {
         };
 
         loadProject();
-    }, [projectId, setNodes, setEdges]);
+    }, [projectId, setNodes, setEdges]); // Dependencies
 
     // --- SAVE PROJECT LOGIC 💾 ---
     const saveProject = async () => {
@@ -215,7 +221,7 @@ function Flow() {
         [reactFlowInstance, nodes, edges, setNodes],
     );
 
-    // --- RUN ARCHITECT LOGIC (AI Generation + Dagre Layout) ---
+    // --- RUN ARCHITECT LOGIC (AI Generation) ---
     const runFlow = async () => {
         const inputNode = nodes.find(n => n.id === '1');
         const promptText = inputNode?.data?.text;

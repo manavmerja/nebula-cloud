@@ -2,7 +2,6 @@ from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEndpoint
 from app.core.config import settings
 
-# --- 1. GROQ MODEL (Fast & Smart) ---
 def get_groq_model():
     """
     Returns the Groq Llama-3 model.
@@ -18,7 +17,6 @@ def get_groq_model():
         max_tokens=4096
     )
 
-# --- 2. HUGGING FACE MODEL (The Backup/Open Source) ---
 def get_hf_model():
     """
     Returns a model hosted on Hugging Face Inference API.
@@ -27,7 +25,6 @@ def get_hf_model():
     if not settings.HF_TOKEN:
         return None
 
-    # Hum 'Mistral-7B' use kar rahe hain kyunki ye free API me fast hai
     repo_id = "mistralai/Mistral-7B-Instruct-v0.3"
     
     return HuggingFaceEndpoint(
@@ -37,7 +34,6 @@ def get_hf_model():
         max_new_tokens=4096
     )
 
-# --- 3. SMART ROUTER ---
 def get_best_available_model():
     """
     Priority: Groq -> HuggingFace -> None
