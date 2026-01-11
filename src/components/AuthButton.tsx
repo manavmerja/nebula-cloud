@@ -8,30 +8,29 @@ export default function AuthButton() {
     return (
       <div className="flex items-center gap-3 bg-gray-800/50 px-3 py-1.5 rounded-full border border-gray-700">
         
-        {/* User Info (Text) */}
+      
         <div className="flex flex-col text-right hidden sm:block">
              <span className="text-xs font-bold text-gray-200 leading-tight">
                  {session.user?.name}
              </span>
         </div>
 
-        {/* User Image (Force Fixed Size) */}
+        
         {session.user?.image ? (
             <img 
                 src={session.user.image} 
                 alt="Profile" 
-                // Ye style tag force karega size ko
                 style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
                 className="border border-gray-500" 
             />
         ) : (
-            // Agar image na ho toh fallback
+            
             <div style={{ width: '32px', height: '32px', borderRadius: '50%' }} className="bg-gray-600 flex items-center justify-center border border-gray-500">
                 👤
             </div>
         )}
         
-        {/* Logout Button */}
+        
         <button
           onClick={() => signOut()}
           className="text-red-400 hover:text-red-300 text-[10px] font-bold uppercase tracking-wider ml-2"
@@ -42,7 +41,7 @@ export default function AuthButton() {
     );
   }
 
-  // LOGIN BUTTONS (Jab login nahi hai)
+  
   return (
     <div className="flex gap-2">
         <button
