@@ -19,12 +19,14 @@ import { useSession } from "next-auth/react"; // <--- Session hook
 import { useSearchParams } from "next/navigation";
 
 // Components Imports
-import Header from './Header'; // <--- NEW HEADER IMPORT
+import Header from './Header'; 
+import Sidebar from './Sidebar';
 import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
+
 
 // 1. IMPORT THE LAYOUT UTILITY WE JUST MADE
 import { getLayoutedElements } from './layoutUtils';
