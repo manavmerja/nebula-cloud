@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, Variants } from "framer-motion"; // 👈 Variants import kiya error fix ke liye
+import { motion, Variants } from "framer-motion";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 interface StoryCardProps {
