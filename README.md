@@ -12,7 +12,7 @@ pinned: false
 
 <div align="center">
 
-# ☁️ Nebula Cloud
+#  Nebula Cloud
 
 ### *The Intelligent Infrastructure Guardian*
 
