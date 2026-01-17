@@ -1,3 +1,15 @@
+<!--
+---
+title: Nebula Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_port: 7860
+pinned: false
+---
+-->
+
 <div align="center">
 
 # ☁️ Nebula Cloud
@@ -6,12 +18,22 @@
 
 **From Code Generation to Infrastructure Governance**
 
-[![Version](https://img.shields.io/badge/Version-2.0-blue?style=for-the-badge)](https://github.com/yourusername/nebula-cloud)
-[![Status](https://img.shields.io/badge/Status-Active%20Prototype-success?style=for-the-badge)](https://nebula-cloud.vercel.app/)
-[![AI](https://img.shields.io/badge/AI-Multi--Agent-orange?style=for-the-badge)](https://groq.com/)
-[![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)](LICENSE)
+![Version](https://img.shields.io/badge/Version-2.0-blue?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active%20Prototype-success?style=for-the-badge)
+![AI](https://img.shields.io/badge/AI-Multi--Agent-orange?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
-[🚀 Live Demo](#) • [📖 Docs](#) • [🎥 Watch Demo](#) • [💬 Discord](#)
+<div align="center">
+
+---
+
+## 🌟 **[→ TRY NEBULA CLOUD LIVE ←](https://nebula-cloud-seven.vercel.app/)** 🌟
+
+*Experience the future of infrastructure governance in your browser*
+
+---
+
+</div>
 
 
 </div>
@@ -196,21 +218,30 @@ Prevents shadow IT and ensures compliance **before** deployment.
 
 ---
 
+
 ## 🛠️ Tech Stack
 
 <div align="center">
 
 ### Frontend
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
 ![React Flow](https://img.shields.io/badge/React_Flow-11-FF6B9D?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 
 ### Backend
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![LangChain](https://img.shields.io/badge/🦜_LangChain-0.1-121212?style=for-the-badge)
 ![Pydantic](https://img.shields.io/badge/Pydantic-2.0-E92063?style=for-the-badge)
 
 ### AI & Infrastructure
 ![Groq](https://img.shields.io/badge/Groq-LPU-FF6B00?style=for-the-badge)
-![Gemini](https://img.shields.io/badge/Gemini-1.5_Pro-4285F4?style=for-the)
+![Gemini](https://img.shields.io/badge/Gemini-1.5_Pro-4285F4?style=for-the-badge&logo=google&logoColor=white)
+![Hugging Face](https://img.shields.io/badge/🤗_Hugging_Face-Transformers-FFD21E?style=for-the-badge)
+![Terraform](https://img.shields.io/badge/Terraform-1.6-7B42BC?style=for-the-badge&logo=terraform&logoColor=white)
+
+### Database
+![MongoDB](https://img.shields.io/badge/MongoDB-6.0-47A248?style=for-the-badge&logo=mongodb&logoColor=white)
+
+</div>
