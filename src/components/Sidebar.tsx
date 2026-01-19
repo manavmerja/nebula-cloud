@@ -7,7 +7,6 @@ import { getCloudIconPath } from '@/utils/iconMap';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* ---------------- ICONS FOR CATEGORIES ---------------- */
-// These icons show when the sidebar is minimized
 const categoryIcons: Record<string, React.ReactNode> = {
   'Compute': <Cpu size={20} />,
   'Networking': <Globe size={20} />,
@@ -66,7 +65,7 @@ const awsServices = [
 /* ---------------- SIDEBAR COMPONENT ---------------- */
 export default function Sidebar() {
   const [search, setSearch] = useState('');
-  const [isHovered, setIsHovered] = useState(false); // Controls the Full Scale expansion
+  const [isHovered, setIsHovered] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ 'Compute': true });
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -92,11 +91,8 @@ export default function Sidebar() {
     setFavorites((f) => f.includes(label) ? f.filter((x) => x !== label) : [...f, label]);
   };
 
-  let globalIndex = -1;
-
   return (
     <motion.aside
-      // 1. The "Canva" Animation: Width changes from 64px (w-16) to 260px
       initial={{ width: '4rem' }}
       animate={{ width: isHovered ? '18rem' : '4rem' }}
       transition={{ type: 'spring', stiffness: 200, damping: 25 }}
@@ -106,14 +102,11 @@ export default function Sidebar() {
     >
 
       {/* --- HEADER --- */}
-      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex items-center h-16">
-        {/* Logo / Title */}
+      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex items-center h-16 shrink-0">
         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
           <div className="min-w-[32px] h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
              <LayoutGrid size={18} className="text-white" />
           </div>
-
-          {/* Text hides when minimized */}
           <motion.div
             animate={{ opacity: isHovered ? 1 : 0 }}
             className="flex flex-col"
@@ -124,11 +117,10 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* --- SEARCH (Only fully visible on hover) --- */}
-      <div className="px-3 py-4">
+      {/* --- SEARCH (Shrink protected) --- */}
+      <div className="px-3 py-4 shrink-0">
         <div className={`relative flex items-center ${isHovered ? 'bg-black/40' : 'bg-transparent'} rounded-lg transition-colors border border-transparent ${isHovered ? 'border-gray-700' : ''}`}>
           <Search className={`min-w-[20px] ml-2 ${isHovered ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
-
           <motion.input
             layout
             value={search}
@@ -136,16 +128,20 @@ export default function Sidebar() {
             placeholder="Search..."
             className={`
               w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-600 ml-2 h-9
-              ${!isHovered && 'hidden'} // Completely hide input when minimized
+              ${!isHovered && 'hidden'}
             `}
           />
         </div>
       </div>
 
-      {/* --- SCROLL AREA --- */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+      {/* --- SCROLL AREA (The Fix is Here) --- */}
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent"
+        // 🚨 CRITICAL FIX: Stop the canvas from stealing the scroll event
+        onWheel={(e) => e.stopPropagation()}
+      >
 
-        {/* ⭐ Favorites (Only show if hovered OR if we implement a mini-star view) */}
+        {/* ⭐ Favorites */}
         {isHovered && favorites.length > 0 && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
               <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -166,10 +162,9 @@ export default function Sidebar() {
         {/* 📂 Categories */}
         {filtered.map((section) => (
           <div key={section.category} className="mb-1">
-            {/* Category Header */}
             <button
               onClick={() => {
-                  if(!isHovered) setIsHovered(true); // Auto-expand if clicking icon
+                  if(!isHovered) setIsHovered(true);
                   setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
               }}
               className={`
@@ -178,13 +173,10 @@ export default function Sidebar() {
               `}
               title={!isHovered ? section.category : ''}
             >
-              {/* Left Side: Icon + Label */}
               <div className="flex items-center gap-3">
                  <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
                     {categoryIcons[section.category] || <Box size={20}/>}
                  </div>
-
-                 {/* Label: Only visible when hovered */}
                  {isHovered && (
                      <motion.span
                         initial={{ opacity: 0, x: -10 }}
@@ -195,8 +187,6 @@ export default function Sidebar() {
                      </motion.span>
                  )}
               </div>
-
-              {/* Arrow: Only visible when hovered */}
               {isHovered && (
                 <motion.div animate={{ rotate: openCategories[section.category] ? -90 : 0 }}>
                   <ChevronDown size={14} className="text-gray-600"/>
@@ -204,7 +194,7 @@ export default function Sidebar() {
               )}
             </button>
 
-            {/* Accordion Content (Items) */}
+            {/* Accordion Content */}
             <AnimatePresence>
               {isHovered && openCategories[section.category] && (
                 <motion.div
@@ -214,9 +204,7 @@ export default function Sidebar() {
                   className="overflow-hidden ml-9 border-l border-gray-800"
                 >
                   <div className="space-y-1 py-1 pl-2">
-                    {section.items.map((label) => {
-                      globalIndex++;
-                      return (
+                    {section.items.map((label) => (
                         <motion.div
                           key={label}
                           draggable
@@ -224,32 +212,25 @@ export default function Sidebar() {
                           whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.03)' }}
                           className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group"
                         >
-                          {/* Mini Icon */}
                           <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
                              <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
                           </div>
-
-                          {/* Label */}
                           <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
                             {label}
                           </span>
-
-                          {/* Favorite Star (Hover only) */}
                           <Star
                             size={10}
                             className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
                           />
                         </motion.div>
-                      );
-                    })}
+                    ))}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         ))}
-
       </div>
     </motion.aside>
   );
