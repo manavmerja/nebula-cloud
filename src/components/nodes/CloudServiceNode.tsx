@@ -1,109 +1,13 @@
 import React, { memo } from 'react';
-import { Handle, Position, useReactFlow } from 'reactflow';
-import {
-  Server,
-  Database,
-  HardDrive,
-  Network,
-  CloudCog,
-  Box,
-  Shield,
-  Globe,
-  Layers,
-  Activity,
-  Boxes,
-  Eye,
-  Lock,
-  GitBranch,
-  Bell,
-  Trash2,
-} from 'lucide-react';
+import { Handle, Position, useReactFlow, NodeProps } from 'reactflow';
+import { Trash2 } from 'lucide-react'; // We keep Trash2 for the delete button
+import { getCloudIconPath } from '@/utils/iconMap'; // <--- Import your new helper
 
-/* --------------------------------------------------
-   AWS SERVICE → ICON + COLOR MAPPER
--------------------------------------------------- */
-const getServiceIcon = (label: string) => {
-  const l = label.toLowerCase();
-
-  // 🖥 Compute
-  if (l.includes('ec2') || l.includes('instance')) {
-    return <Server className="w-6 h-6 text-orange-400" />;
-  }
-  if (l.includes('lambda')) {
-    return <Box className="w-6 h-6 text-orange-400" />;
-  }
-
-  // 📦 Containers
-  if (l.includes('ecs') || l.includes('eks') || l.includes('fargate')) {
-    return <Boxes className="w-6 h-6 text-orange-300" />;
-  }
-
-  // 💾 Storage
-  if (l.includes('s3') || l.includes('bucket')) {
-    return <HardDrive className="w-6 h-6 text-green-400" />;
-  }
-
-  // 🗄 Databases
-  if (l.includes('rds') || l.includes('aurora')) {
-    return <Database className="w-6 h-6 text-blue-400" />;
-  }
-  if (l.includes('dynamo')) {
-    return <Database className="w-6 h-6 text-indigo-400" />;
-  }
-
-  // 🌐 Networking
-  if (l.includes('vpc') || l.includes('subnet')) {
-    return <Globe className="w-6 h-6 text-purple-400" />;
-  }
-  if (l.includes('load balancer') || l.includes('alb') || l.includes('elb')) {
-    return <Network className="w-6 h-6 text-pink-400" />;
-  }
-  if (l.includes('api gateway')) {
-    return <Activity className="w-6 h-6 text-cyan-400" />;
-  }
-  if (l.includes('cloudfront')) {
-    return <Layers className="w-6 h-6 text-sky-400" />;
-  }
-
-  // 🔄 Messaging & Events
-  if (l.includes('sqs') || l.includes('sns') || l.includes('eventbridge')) {
-    return <Bell className="w-6 h-6 text-yellow-400" />;
-  }
-
-  // 🔐 Security
-  if (l.includes('iam') || l.includes('security group') || l.includes('waf')) {
-    return <Shield className="w-6 h-6 text-red-400" />;
-  }
-  if (l.includes('kms') || l.includes('secrets')) {
-    return <Lock className="w-6 h-6 text-red-300" />;
-  }
-
-  // 🔍 Observability
-  if (l.includes('cloudwatch') || l.includes('x-ray')) {
-    return <Eye className="w-6 h-6 text-emerald-400" />;
-  }
-
-  // 🚀 DevOps
-  if (l.includes('codepipeline') || l.includes('codebuild')) {
-    return <GitBranch className="w-6 h-6 text-indigo-400" />;
-  }
-
-  // ☁ Default
-  return <CloudCog className="w-6 h-6 text-gray-400" />;
-};
-
-/* --------------------------------------------------
-   CLOUD SERVICE NODE
--------------------------------------------------- */
-function CloudServiceNode({
-  id,
-  data,
-}: {
-  id: string;
-  data: { label: string };
-}) {
+function CloudServiceNode({ id, data, selected }: NodeProps) {
   const { setNodes } = useReactFlow();
-  const icon = getServiceIcon(data.label);
+
+  // 1. Get the authentic icon path from your helper
+  const iconPath = getCloudIconPath(data.label);
 
   const deleteNode = () => {
     setNodes((nodes) => nodes.filter((n) => n.id !== id));
@@ -111,46 +15,77 @@ function CloudServiceNode({
 
   return (
     <div
-      className="
+      className={`
         group relative flex flex-col items-center justify-center
-        p-2 rounded-lg min-w-[110px]
-        bg-gray-900/90 border border-gray-700
-        shadow-xl backdrop-blur-sm
-        hover:border-blue-500 transition
-      "
+        p-3 rounded-xl min-w-[120px] transition-all duration-300
+        border backdrop-blur-md
+        ${selected
+          ? 'bg-gray-800/90 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]' // Active Glow
+          : 'bg-gray-900/90 border-gray-700 hover:border-gray-500 shadow-xl'
+        }
+      `}
     >
-      {/* ❌ Delete Button */}
+      {/* ❌ Delete Button (Hidden until hover) */}
       <button
-        onClick={deleteNode}
+        onClick={(e) => {
+            e.stopPropagation(); // Prevent clicking the node when deleting
+            deleteNode();
+        }}
         className="
           absolute -top-2 -right-2
-          bg-red-600 hover:bg-red-700
-          p-1 rounded-full shadow-md
-          opacity-0 scale-90
-          group-hover:opacity-100 group-hover:scale-100
-          transition-all
+          bg-red-500 hover:bg-red-600 text-white
+          p-1.5 rounded-full shadow-md
+          opacity-0 scale-75 translate-y-2
+          group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0
+          transition-all duration-200 z-50
         "
+        title="Delete Resource"
       >
-        <Trash2 size={12} className="text-white" />
+        <Trash2 size={12} />
       </button>
 
-      {/* 🎯 Input Handles */}
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-gray-600" />
-      <Handle type="target" position={Position.Left} className="w-2 h-2 !bg-gray-600" />
+      {/* 🎯 Input Handles (Top & Left) */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-2 !h-2 !bg-gray-500 !border-gray-900 transition-colors hover:!bg-cyan-400"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!w-2 !h-2 !bg-gray-500 !border-gray-900 transition-colors hover:!bg-cyan-400"
+      />
 
-      {/* 🔷 Icon */}
-      <div className="mb-2 p-2 bg-black/50 rounded-full border border-gray-800">
-        {icon}
+      {/* 🔷 The Icon Container */}
+      <div className="relative mb-2 w-12 h-12 flex items-center justify-center">
+         {/* Subtle Glow behind the icon to make it pop on dark background */}
+         <div className="absolute inset-0 bg-white/5 rounded-full blur-sm" />
+
+         {/* The Official AWS Icon */}
+         <img
+            src={iconPath}
+            alt={data.label}
+            className="relative w-full h-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,0.4)]"
+            draggable={false}
+         />
       </div>
 
       {/* 🏷 Label */}
-      <span className="text-[10px] font-medium text-gray-300 text-center leading-tight px-1">
+      <span className="text-[11px] font-semibold text-gray-200 text-center leading-tight px-1 max-w-[140px] tracking-wide">
         {data.label}
       </span>
 
-      {/* 🚀 Output Handles */}
-      <Handle type="source" position={Position.Right} className="w-2 h-2 !bg-gray-600" />
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-gray-600" />
+      {/* 🚀 Output Handles (Right & Bottom) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!w-2 !h-2 !bg-gray-500 !border-gray-900 transition-colors hover:!bg-purple-400"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-2 !h-2 !bg-gray-500 !border-gray-900 transition-colors hover:!bg-purple-400"
+      />
     </div>
   );
 }
