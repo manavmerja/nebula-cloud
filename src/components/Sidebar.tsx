@@ -9,34 +9,68 @@ import { getCloudIconPath } from '@/utils/iconMap'; // <--- Import your helper
 /* ---------------- DATA STRUCTURE ---------------- */
 // We removed the Lucide imports and 'icon/color' props.
 // The icon is now derived dynamically from the label.
+/* ---------------- DATA STRUCTURE ---------------- */
 const awsServices = [
   {
     category: 'Compute',
-    items: ['EC2 Instance', 'Lambda Function'],
-  },
-  {
-    category: 'Containers',
-    items: ['ECS Cluster', 'EKS Cluster', 'Fargate'],
-  },
-  {
-    category: 'Storage',
-    items: ['S3 Bucket'],
-  },
-  {
-    category: 'Database',
-    items: ['RDS Database', 'Aurora', 'DynamoDB'],
+    items: [
+        'EC2 Instance',
+        'Lambda Function',
+        'Fargate',
+        'App Runner' // Good for modern web apps
+    ],
   },
   {
     category: 'Networking',
-    items: ['VPC', 'Application Load Balancer', 'API Gateway', 'CloudFront'],
+    items: [
+        'VPC',
+        'Public Subnet',       // <--- NEW
+        'Private Subnet',      // <--- NEW
+        'Internet Gateway',    // <--- NEW
+        'NAT Gateway',         // <--- NEW
+        'VPC Endpoint',        // <--- NEW (PrivateLink)
+        'Route Table',         // <--- NEW
+        'Application Load Balancer',
+        'API Gateway',
+        'CloudFront'
+    ],
   },
   {
-    category: 'Messaging & Events',
+    category: 'Storage',
+    items: [
+        'S3 Bucket',
+        'Glacier Archive',     // <--- NEW (Long-term)
+        'EFS File System'
+    ],
+  },
+  {
+    category: 'Database',
+    items: [
+        'RDS Database',
+        'Aurora',
+        'DynamoDB',
+        'ElastiCache Redis',   // <--- NEW (Caching)
+        'ElastiCache Memcached'
+    ],
+  },
+  {
+    category: 'Containers',
+    items: ['ECS Cluster', 'EKS Cluster'],
+  },
+  {
+    category: 'Messaging',
     items: ['SQS Queue', 'SNS Topic', 'EventBridge'],
   },
   {
     category: 'Security',
-    items: ['IAM Role', 'Security Group', 'WAF', 'KMS', 'Secrets Manager'],
+    items: [
+        'IAM Role',
+        'Security Group',
+        'Network ACL',         // <--- NEW (NACL)
+        'WAF',
+        'KMS Key',
+        'Secrets Manager'
+    ],
   },
   {
     category: 'Observability',

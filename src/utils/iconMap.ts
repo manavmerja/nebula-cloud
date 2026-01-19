@@ -1,83 +1,178 @@
-// src/utils/iconMap.ts
+/**
+ * Icon Map Utility
+ * Automatically selects the correct AWS icon from the /public/aws-icons/ folder
+ * based on the node's label.
+ *
+ * FEATURES:
+ * 1. Extension Awareness: Uses .png or .svg based on your specific file list.
+ * 2. Smart Matching: Detects generic terms like "Archive", "Active Files", "Cache".
+ * 3. Edge Cases: Handles Public/Private Subnets, Gateways, and Endpoints.
+ */
 
 export const getCloudIconPath = (label: string): string => {
   const lowerLabel = label.toLowerCase();
 
-  // --- COMPUTE ---
-  if (lowerLabel.includes('lambda') || lowerLabel.includes('function')) {
-    return '/aws-icons/lambda-function.svg'; // Check extension
+  // --------------------------------------------------------
+  // 1. NETWORKING (Subnets, Gateways, VPC)
+  // --------------------------------------------------------
+
+  // Specific Subnet Types (Must come before generic 'subnet')
+  if (lowerLabel.includes('public') && lowerLabel.includes('subnet')) {
+    return '/aws-icons/public-subnet.svg';
   }
-  if (lowerLabel.includes('ec2') || lowerLabel.includes('server') || lowerLabel.includes('instance')) {
+  if (lowerLabel.includes('private') && lowerLabel.includes('subnet')) {
+    return '/aws-icons/private-subnet.svg';
+  }
+
+  // Gateways & Routing
+  if (lowerLabel.includes('internet gateway') || lowerLabel.includes('igw')) {
+    return '/aws-icons/internet-gateway.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('nat gateway') || lowerLabel.includes('nat')) {
+    return '/aws-icons/nat-gateway.svg';
+  }
+  if (lowerLabel.includes('route table') || lowerLabel.includes('route')) {
+    return '/aws-icons/route-table.svg';
+  }
+  if (lowerLabel.includes('endpoint') || lowerLabel.includes('privatelink')) {
+    return '/aws-icons/vpc-endpoint.svg';
+  }
+  if (lowerLabel.includes('nacl') || lowerLabel.includes('acl')) {
+    return '/aws-icons/nacl.svg';
+  }
+
+  // Core Networking
+  if (lowerLabel.includes('vpc')) {
+    return '/aws-icons/vpc.svg';
+  }
+  if (lowerLabel.includes('api gateway') || lowerLabel.includes('api')) {
+    return '/aws-icons/api-gateway.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('cloudfront') || lowerLabel.includes('cdn')) {
+    return '/aws-icons/cloud-front.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('load balancer') || lowerLabel.includes('elb') || lowerLabel.includes('alb')) {
+    return '/aws-icons/load-balancer.png'; // ⚠️ PNG
+  }
+
+  // --------------------------------------------------------
+  // 2. COMPUTE (EC2, Lambda, Containers)
+  // --------------------------------------------------------
+
+  // Standard Compute
+  if (lowerLabel.includes('ec2') || lowerLabel.includes('instance') || lowerLabel.includes('server') || lowerLabel.includes('vm')) {
     return '/aws-icons/ec2.svg';
   }
+  if (lowerLabel.includes('lambda') || lowerLabel.includes('function')) {
+    return '/aws-icons/lambda-function.svg';
+  }
+
+  // Containers
   if (lowerLabel.includes('ecs') || lowerLabel.includes('container')) {
     return '/aws-icons/ecs.svg';
   }
-  if (lowerLabel.includes('eks') || lowerLabel.includes('kubernetes')) {
+  if (lowerLabel.includes('eks') || lowerLabel.includes('kubernetes') || lowerLabel.includes('k8s')) {
     return '/aws-icons/eks.svg';
   }
   if (lowerLabel.includes('fargate')) {
-    return '/aws-icons/fargate.png';
+    return '/aws-icons/fargate.png'; // ⚠️ PNG
   }
 
-  // --- STORAGE & DATABASE ---
-  if (lowerLabel.includes('s3') || lowerLabel.includes('bucket') || lowerLabel.includes('object')) {
-    return '/aws-icons/s3-bucket.svg'; // Matches your filename 's3-bucket'
-  }
-  if (lowerLabel.includes('rds') || lowerLabel.includes('sql') || lowerLabel.includes('mysql') || lowerLabel.includes('postgres')) {
-    return '/aws-icons/rds.png';
-  }
-  if (lowerLabel.includes('dynamo') || lowerLabel.includes('nosql')) {
-    return '/aws-icons/dynamodb.png';
-  }
-  if (lowerLabel.includes('aurora')) {
-    return '/aws-icons/aurora.png';
+  // --------------------------------------------------------
+  // 3. DATABASE & STORAGE (Includes Smart Logic)
+  // --------------------------------------------------------
+
+  // Caching (Redis/Memcached/Session)
+  if (
+    lowerLabel.includes('redis') ||
+    lowerLabel.includes('memcached') ||
+    lowerLabel.includes('elasticache') ||
+    lowerLabel.includes('cache') ||      // Catch "Session Cache"
+    lowerLabel.includes('session')
+  ) {
+    if (lowerLabel.includes('memcached')) return '/aws-icons/elasticache-memcached.png';
+    return '/aws-icons/elasticache-redis.svg'; // Default to Redis
   }
 
-  // --- NETWORKING ---
-  if (lowerLabel.includes('vpc') || lowerLabel.includes('network')) {
-    return '/aws-icons/vpc.svg';
-  }
-  if (lowerLabel.includes('gateway') || lowerLabel.includes('api')) {
-    return '/aws-icons/api-gateway.png'; // Matches your filename 'api-gateway'
-  }
-  if (lowerLabel.includes('load balancer') || lowerLabel.includes('elb') || lowerLabel.includes('alb')) {
-    return '/aws-icons/load-balancer.png';
-  }
-  if (lowerLabel.includes('cloudfront') || lowerLabel.includes('cdn')) {
-    return '/aws-icons/cloud-front.png';
+  // S3 / File Storage (Catches "Active Files", "File Storage", "Assets")
+  if (
+    lowerLabel.includes('s3') ||
+    lowerLabel.includes('bucket') ||
+    lowerLabel.includes('object') ||
+    lowerLabel.includes('file') ||       // Catch "File Storage"
+    lowerLabel.includes('storage') ||    // Catch "Storage"
+    lowerLabel.includes('asset')
+  ) {
+    return '/aws-icons/s3-bucket.svg';
   }
 
-  // --- SECURITY & MANAGEMENT ---
-  if (lowerLabel.includes('iam') || lowerLabel.includes('role') || lowerLabel.includes('policy')) {
-    return '/aws-icons/Iam-role.svg'; // Matches 'lam-role' from your screenshot
+  // Glacier / Archive (Catches "Long-term Archive", "Backup")
+  if (
+    lowerLabel.includes('glacier') ||
+    lowerLabel.includes('archive') ||    // Catch "Archive"
+    lowerLabel.includes('backup') ||     // Catch "Backup"
+    lowerLabel.includes('cold')
+  ) {
+    return '/aws-icons/glacier.png';     // ⚠️ PNG
+  }
+
+  // Databases (Specific)
+  if (lowerLabel.includes('aurora')) return '/aws-icons/aurora.png'; // ⚠️ PNG
+  if (lowerLabel.includes('dynamo') || lowerLabel.includes('nosql')) return '/aws-icons/dynamodb.png'; // ⚠️ PNG
+
+  // Generic RDS (Catches "PostgreSQL", "MySQL", "Database")
+  if (
+    lowerLabel.includes('rds') ||
+    lowerLabel.includes('sql') ||
+    lowerLabel.includes('database') ||
+    lowerLabel.includes('db')
+  ) {
+    return '/aws-icons/rds.png';         // ⚠️ PNG
+  }
+
+  // --------------------------------------------------------
+  // 4. SECURITY & MANAGEMENT
+  // --------------------------------------------------------
+  if (lowerLabel.includes('iam') || lowerLabel.includes('role') || lowerLabel.includes('identity')) {
+    return '/aws-icons/Iam-role.svg';    // Matches your snippet's capitalization
   }
   if (lowerLabel.includes('security group') || lowerLabel.includes('firewall')) {
     return '/aws-icons/security-group.svg';
   }
   if (lowerLabel.includes('waf') || lowerLabel.includes('shield')) {
-    return '/aws-icons/waf.png';
+    return '/aws-icons/waf.png';         // ⚠️ PNG
   }
-  if (lowerLabel.includes('secrets')) {
-    return '/aws-icons/secrets-manager.png';
+  if (lowerLabel.includes('secrets') || lowerLabel.includes('key')) {
+    return '/aws-icons/secrets-manager.png'; // ⚠️ PNG
   }
-  if (lowerLabel.includes('cloudwatch') || lowerLabel.includes('monitor')) {
-    return '/aws-icons/cloud-watch.png';
+  if (lowerLabel.includes('cloudwatch') || lowerLabel.includes('monitor') || lowerLabel.includes('log')) {
+    return '/aws-icons/cloud-watch.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('x-ray') || lowerLabel.includes('trace')) {
+    return '/aws-icons/x-ray.png';       // ⚠️ PNG
   }
 
-  // --- QUEUES & NOTIFICATIONS ---
-  if (lowerLabel.includes('sns') || lowerLabel.includes('topic')) {
+  // --------------------------------------------------------
+  // 5. APPLICATION INTEGRATION & DEVOPS
+  // --------------------------------------------------------
+  if (lowerLabel.includes('sns') || lowerLabel.includes('topic') || lowerLabel.includes('notification')) {
     return '/aws-icons/sns.svg';
   }
-  if (lowerLabel.includes('sqs') || lowerLabel.includes('queue')) {
+  if (lowerLabel.includes('sqs') || lowerLabel.includes('queue') || lowerLabel.includes('message')) {
     return '/aws-icons/sqs.svg';
   }
+  if (lowerLabel.includes('eventbridge') || lowerLabel.includes('bus') || lowerLabel.includes('event')) {
+    return '/aws-icons/eventbridge.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('pipeline') || lowerLabel.includes('ci/cd')) {
+    return '/aws-icons/code-pipeline.png'; // ⚠️ PNG
+  }
+  if (lowerLabel.includes('build')) {
+    return '/aws-icons/code-build.png';  // ⚠️ PNG
+  }
 
-  // --- DEVOPS ---
-  if (lowerLabel.includes('pipeline')) return '/aws-icons/code-pipeline.png';
-  if (lowerLabel.includes('build')) return '/aws-icons/code-build.png';
-
-  // --- DEFAULT FALLBACK ---
-  // If we don't know what it is, show a generic EC2 icon or a specific 'cloud' icon if you have one
+  // --------------------------------------------------------
+  // FALLBACK (Default Icon)
+  // --------------------------------------------------------
   return '/aws-icons/ec2.svg';
 };
