@@ -1,258 +1,237 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
-  Server,
-  Database,
-  HardDrive,
-  Globe,
-  Box,
-  Shield,
-  Network,
-  Layers,
-  Activity,
-  GitBranch,
-  Lock,
-  Eye,
-  Boxes,
-  Bell,
-  Star,
-  ChevronDown,
+  ChevronDown, Star, Search, GripVertical,
+  Cpu, Globe, HardDrive, Database, Box, MessageSquare, Shield, Eye, GitBranch, LayoutGrid
 } from 'lucide-react';
+import { getCloudIconPath } from '@/utils/iconMap';
+import { motion, AnimatePresence } from 'framer-motion';
 
+/* ---------------- ICONS FOR CATEGORIES ---------------- */
+const categoryIcons: Record<string, React.ReactNode> = {
+  'Compute': <Cpu size={20} />,
+  'Networking': <Globe size={20} />,
+  'Storage': <HardDrive size={20} />,
+  'Database': <Database size={20} />,
+  'Containers': <Box size={20} />,
+  'Messaging': <MessageSquare size={20} />,
+  'Security': <Shield size={20} />,
+  'Observability': <Eye size={20} />,
+  'DevOps': <GitBranch size={20} />,
+};
+
+/* ---------------- DATA STRUCTURE ---------------- */
 const awsServices = [
   {
     category: 'Compute',
-    items: [
-      { label: 'EC2 Instance', icon: Server, color: 'text-orange-400' },
-      { label: 'Lambda Function', icon: Box, color: 'text-orange-400' },
-    ],
-  },
-  {
-    category: 'Containers',
-    items: [
-      { label: 'ECS Cluster', icon: Boxes, color: 'text-orange-300' },
-      { label: 'EKS Cluster', icon: Boxes, color: 'text-orange-300' },
-      { label: 'Fargate', icon: Boxes, color: 'text-orange-300' },
-    ],
-  },
-  {
-    category: 'Storage',
-    items: [{ label: 'S3 Bucket', icon: HardDrive, color: 'text-green-400' }],
-  },
-  {
-    category: 'Database',
-    items: [
-      { label: 'RDS Database', icon: Database, color: 'text-blue-400' },
-      { label: 'Aurora', icon: Database, color: 'text-blue-400' },
-      { label: 'DynamoDB', icon: Database, color: 'text-indigo-400' },
-    ],
+    items: ['EC2 Instance', 'Lambda Function', 'Fargate', 'App Runner'],
   },
   {
     category: 'Networking',
     items: [
-      { label: 'VPC', icon: Globe, color: 'text-purple-400' },
-      { label: 'Application Load Balancer', icon: Network, color: 'text-pink-400' },
-      { label: 'API Gateway', icon: Activity, color: 'text-cyan-400' },
-      { label: 'CloudFront', icon: Layers, color: 'text-sky-400' },
+        'VPC', 'Public Subnet', 'Private Subnet', 'Internet Gateway', 'NAT Gateway',
+        'VPC Endpoint', 'Route Table', 'Application Load Balancer', 'API Gateway', 'CloudFront'
     ],
   },
   {
-    category: 'Messaging & Events',
-    items: [
-      { label: 'SQS Queue', icon: Bell, color: 'text-yellow-400' },
-      { label: 'SNS Topic', icon: Bell, color: 'text-yellow-400' },
-      { label: 'EventBridge', icon: Activity, color: 'text-yellow-300' },
-    ],
+    category: 'Storage',
+    items: ['S3 Bucket', 'Glacier Archive', 'EFS File System'],
+  },
+  {
+    category: 'Database',
+    items: ['RDS Database', 'Aurora', 'DynamoDB', 'ElastiCache Redis', 'ElastiCache Memcached'],
+  },
+  {
+    category: 'Containers',
+    items: ['ECS Cluster', 'EKS Cluster'],
+  },
+  {
+    category: 'Messaging',
+    items: ['SQS Queue', 'SNS Topic', 'EventBridge'],
   },
   {
     category: 'Security',
-    items: [
-      { label: 'IAM Role', icon: Shield, color: 'text-red-400' },
-      { label: 'Security Group', icon: Shield, color: 'text-red-400' },
-      { label: 'WAF', icon: Shield, color: 'text-red-500' },
-      { label: 'KMS', icon: Lock, color: 'text-red-300' },
-      { label: 'Secrets Manager', icon: Lock, color: 'text-red-300' },
-    ],
+    items: ['IAM Role', 'Security Group', 'Network ACL', 'WAF', 'KMS Key', 'Secrets Manager'],
   },
   {
     category: 'Observability',
-    items: [
-      { label: 'CloudWatch', icon: Eye, color: 'text-emerald-400' },
-      { label: 'X-Ray', icon: Eye, color: 'text-emerald-300' },
-    ],
+    items: ['CloudWatch', 'X-Ray'],
   },
   {
     category: 'DevOps',
-    items: [
-      { label: 'CodePipeline', icon: GitBranch, color: 'text-indigo-400' },
-      { label: 'CodeBuild', icon: GitBranch, color: 'text-indigo-400' },
-    ],
+    items: ['CodePipeline', 'CodeBuild'],
   },
 ];
 
-/* ---------------- SIDEBAR ---------------- */
-
+/* ---------------- SIDEBAR COMPONENT ---------------- */
 export default function Sidebar() {
   const [search, setSearch] = useState('');
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [isHovered, setIsHovered] = useState(false);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ 'Compute': true });
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-
   const flatList = useRef<HTMLDivElement[]>([]);
 
-  /* ---------- FILTER ---------- */
+  // Filter Logic
   const filtered = useMemo(() => {
     return awsServices.map((section) => ({
       ...section,
-      items: section.items.filter((i) =>
-        i.label.toLowerCase().includes(search.toLowerCase())
+      items: section.items.filter((label) =>
+        label.toLowerCase().includes(search.toLowerCase())
       ),
-    }));
+    })).filter(section => section.items.length > 0);
   }, [search]);
 
-  /* ---------- KEYBOARD NAV ---------- */
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        setActiveIndex((i) => Math.min(i + 1, flatList.current.length - 1));
-      }
-      if (e.key === 'ArrowUp') {
-        setActiveIndex((i) => Math.max(i - 1, 0));
-      }
-      if (e.key === 'Enter') {
-        flatList.current[activeIndex]?.dispatchEvent(
-          new MouseEvent('mousedown', { bubbles: true })
-        );
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [activeIndex]);
-
-  /* ---------- DRAG ---------- */
+  // Drag Logic
   const onDragStart = (event: React.DragEvent, label: string) => {
-    event.dataTransfer.setData(
-      'application/reactflow',
-      JSON.stringify({ type: 'cloudNode', label })
-    );
+    event.dataTransfer.setData('application/reactflow', JSON.stringify({ type: 'cloudNode', label }));
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  /* ---------- FAVORITES ---------- */
   const toggleFavorite = (label: string) => {
-    setFavorites((f) =>
-      f.includes(label) ? f.filter((x) => x !== label) : [...f, label]
-    );
+    setFavorites((f) => f.includes(label) ? f.filter((x) => x !== label) : [...f, label]);
   };
 
-  let index = -1;
-
   return (
-    <aside className="w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col">
+    <motion.aside
+      initial={{ width: '4rem' }}
+      animate={{ width: isHovered ? '18rem' : '4rem' }}
+      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group"
+    >
 
-      {/* Header */}
-      <div className="p-4 border-b border-gray-800">
-        <h2 className="text-lg font-bold text-white">AWS Services</h2>
-
-        {/* Search */}
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search services..."
-          className="mt-3 w-full px-3 py-2 text-sm bg-gray-800 border border-gray-700 rounded-md text-gray-200 outline-none focus:border-blue-500"
-        />
+      {/* --- HEADER --- */}
+      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex items-center h-16 shrink-0">
+        <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+          <div className="min-w-[32px] h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+             <LayoutGrid size={18} className="text-white" />
+          </div>
+          <motion.div
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            className="flex flex-col"
+          >
+            <h2 className="text-sm font-bold text-gray-200 tracking-wide">Nebula Cloud</h2>
+            <span className="text-[10px] text-gray-500 uppercase font-semibold">Architect</span>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Scroll Area */}
+      {/* --- SEARCH (Shrink protected) --- */}
+      <div className="px-3 py-4 shrink-0">
+        <div className={`relative flex items-center ${isHovered ? 'bg-black/40' : 'bg-transparent'} rounded-lg transition-colors border border-transparent ${isHovered ? 'border-gray-700' : ''}`}>
+          <Search className={`min-w-[20px] ml-2 ${isHovered ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
+          <motion.input
+            layout
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search..."
+            className={`
+              w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-600 ml-2 h-9
+              ${!isHovered && 'hidden'}
+            `}
+          />
+        </div>
+      </div>
+
+      {/* --- SCROLL AREA (The Fix is Here) --- */}
       <div
-        className="
-          flex-1
-          overflow-y-auto
-          overflow-x-hidden
-          overscroll-contain
-          px-4 py-4 space-y-6
-        "
+        className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent"
+        // 🚨 CRITICAL FIX: Stop the canvas from stealing the scroll event
         onWheel={(e) => e.stopPropagation()}
       >
 
-
-        {/*  Favorites */}
-        {favorites.length > 0 && (
-          <div>
-            <h3 className="text-xs text-yellow-400 mb-3 uppercase">Favorites</h3>
-            {favorites.map((label) => (
-              <div
-                key={label}
-                draggable
-                onDragStart={(e) => onDragStart(e, label)}
-                className="p-3 bg-gray-800 rounded-lg text-sm text-gray-200 cursor-grab"
-              >
-                ⭐ {label}
+        {/* ⭐ Favorites */}
+        {isHovered && favorites.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
+              <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <Star size={10} fill="currentColor" /> Favorites
+              </h3>
+              <div className="space-y-1">
+                {favorites.map((label) => (
+                    <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10">
+                         <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4" />
+                         <span className="text-xs text-gray-300 truncate">{label}</span>
+                    </div>
+                ))}
               </div>
-            ))}
-          </div>
+              <div className="h-px bg-gray-800 my-4" />
+            </motion.div>
         )}
 
-        {/* Categories */}
+        {/* 📂 Categories */}
         {filtered.map((section) => (
-          <div key={section.category}>
-            {/* Collapse */}
+          <div key={section.category} className="mb-1">
             <button
-              onClick={() =>
-                setCollapsed((c) => ({
-                  ...c,
-                  [section.category]: !c[section.category],
-                }))
-              }
-              className="flex items-center justify-between w-full text-xs text-gray-400 uppercase mb-3"
+              onClick={() => {
+                  if(!isHovered) setIsHovered(true);
+                  setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
+              }}
+              className={`
+                w-full flex items-center gap-3 p-2 rounded-lg transition-all
+                ${!isHovered ? 'justify-center hover:bg-gray-800' : 'justify-between hover:bg-gray-800/50'}
+              `}
+              title={!isHovered ? section.category : ''}
             >
-              {section.category}
-              <ChevronDown
-                size={14}
-                className={`transition ${
-                  collapsed[section.category] ? '-rotate-90' : ''
-                }`}
-              />
+              <div className="flex items-center gap-3">
+                 <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
+                    {categoryIcons[section.category] || <Box size={20}/>}
+                 </div>
+                 {isHovered && (
+                     <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-[11px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                     >
+                        {section.category}
+                     </motion.span>
+                 )}
+              </div>
+              {isHovered && (
+                <motion.div animate={{ rotate: openCategories[section.category] ? -90 : 0 }}>
+                  <ChevronDown size={14} className="text-gray-600"/>
+                </motion.div>
+              )}
             </button>
 
-            {!collapsed[section.category] &&
-              section.items.map(({ label, icon: Icon, color }) => {
-                index++;
-                return (
-                  <div
-                    key={label}
-                    //  FIXED LINE HERE (Use curly braces to avoid returning value)
-                    ref={(el) => { if (el) flatList.current[index] = el; }}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, label)}
-                    onMouseDown={() => setActiveIndex(index)}
-                    className={`
-                      flex items-center gap-3 p-3 rounded-lg cursor-grab
-                      bg-gray-800/60 border
-                      ${activeIndex === index ? 'border-blue-500' : 'border-transparent'}
-                      hover:border-blue-500 transition
-                    `}
-                  >
-                    <Icon size={18} className={color} />
-                    <span className="text-sm text-gray-200 flex-1">{label}</span>
-
-                    <Star
-                      size={14}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(label);
-                      }}
-                      className={`cursor-pointer ${
-                        favorites.includes(label)
-                          ? 'text-yellow-400'
-                          : 'text-gray-500'
-                      }`}
-                    />
+            {/* Accordion Content */}
+            <AnimatePresence>
+              {isHovered && openCategories[section.category] && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden ml-9 border-l border-gray-800"
+                >
+                  <div className="space-y-1 py-1 pl-2">
+                    {section.items.map((label) => (
+                        <motion.div
+                          key={label}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, label)}
+                          whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                          className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group"
+                        >
+                          <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
+                             <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
+                          </div>
+                          <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
+                            {label}
+                          </span>
+                          <Star
+                            size={10}
+                            className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
+                          />
+                        </motion.div>
+                    ))}
                   </div>
-                );
-              })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         ))}
       </div>
-    </aside>
+    </motion.aside>
   );
 }

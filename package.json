@@ -18,7 +18,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dagre": "^0.8.5",
-    "framer-motion": "^12.24.10",
+    "framer-motion": "^12.27.1",
     "groq-sdk": "^0.37.0",
     "gsap": "^3.14.2",
     "lottie-react": "^2.4.1",

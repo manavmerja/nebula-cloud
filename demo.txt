@@ -8,3 +8,6 @@ provide me high available and scalable three tier architecture
 
 
 Provide me a three tire Web Architrecture with aaplication layer, web layer and Database layer. with three ec2 and load balancer in web layer and assuming it will be having traffic of 100 user and the architecture should Highl available.
+
+
+Create a complete enterprise architecture. Start with a VPC containing public and private subnets. The public subnet has an Internet Gateway and an ALB protected by WAF. The private subnet contains EC2 instances and an ElastiCache Redis cluster. The instances connect to S3 via a VPC Endpoint and to the internet via a NAT Gateway. Secure the subnets with NACLs
