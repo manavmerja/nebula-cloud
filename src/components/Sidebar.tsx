@@ -1,57 +1,45 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import {
-  ChevronDown,
-  Star,
-  Search
+  ChevronDown, Star, Search, GripVertical,
+  Cpu, Globe, HardDrive, Database, Box, MessageSquare, Shield, Eye, GitBranch, LayoutGrid
 } from 'lucide-react';
-import { getCloudIconPath } from '@/utils/iconMap'; // <--- Import your helper
+import { getCloudIconPath } from '@/utils/iconMap';
+import { motion, AnimatePresence } from 'framer-motion';
 
-/* ---------------- DATA STRUCTURE ---------------- */
-// We removed the Lucide imports and 'icon/color' props.
-// The icon is now derived dynamically from the label.
+/* ---------------- ICONS FOR CATEGORIES ---------------- */
+// These icons show when the sidebar is minimized
+const categoryIcons: Record<string, React.ReactNode> = {
+  'Compute': <Cpu size={20} />,
+  'Networking': <Globe size={20} />,
+  'Storage': <HardDrive size={20} />,
+  'Database': <Database size={20} />,
+  'Containers': <Box size={20} />,
+  'Messaging': <MessageSquare size={20} />,
+  'Security': <Shield size={20} />,
+  'Observability': <Eye size={20} />,
+  'DevOps': <GitBranch size={20} />,
+};
+
 /* ---------------- DATA STRUCTURE ---------------- */
 const awsServices = [
   {
     category: 'Compute',
-    items: [
-        'EC2 Instance',
-        'Lambda Function',
-        'Fargate',
-        'App Runner' // Good for modern web apps
-    ],
+    items: ['EC2 Instance', 'Lambda Function', 'Fargate', 'App Runner'],
   },
   {
     category: 'Networking',
     items: [
-        'VPC',
-        'Public Subnet',       // <--- NEW
-        'Private Subnet',      // <--- NEW
-        'Internet Gateway',    // <--- NEW
-        'NAT Gateway',         // <--- NEW
-        'VPC Endpoint',        // <--- NEW (PrivateLink)
-        'Route Table',         // <--- NEW
-        'Application Load Balancer',
-        'API Gateway',
-        'CloudFront'
+        'VPC', 'Public Subnet', 'Private Subnet', 'Internet Gateway', 'NAT Gateway',
+        'VPC Endpoint', 'Route Table', 'Application Load Balancer', 'API Gateway', 'CloudFront'
     ],
   },
   {
     category: 'Storage',
-    items: [
-        'S3 Bucket',
-        'Glacier Archive',     // <--- NEW (Long-term)
-        'EFS File System'
-    ],
+    items: ['S3 Bucket', 'Glacier Archive', 'EFS File System'],
   },
   {
     category: 'Database',
-    items: [
-        'RDS Database',
-        'Aurora',
-        'DynamoDB',
-        'ElastiCache Redis',   // <--- NEW (Caching)
-        'ElastiCache Memcached'
-    ],
+    items: ['RDS Database', 'Aurora', 'DynamoDB', 'ElastiCache Redis', 'ElastiCache Memcached'],
   },
   {
     category: 'Containers',
@@ -63,14 +51,7 @@ const awsServices = [
   },
   {
     category: 'Security',
-    items: [
-        'IAM Role',
-        'Security Group',
-        'Network ACL',         // <--- NEW (NACL)
-        'WAF',
-        'KMS Key',
-        'Secrets Manager'
-    ],
+    items: ['IAM Role', 'Security Group', 'Network ACL', 'WAF', 'KMS Key', 'Secrets Manager'],
   },
   {
     category: 'Observability',
@@ -85,199 +66,191 @@ const awsServices = [
 /* ---------------- SIDEBAR COMPONENT ---------------- */
 export default function Sidebar() {
   const [search, setSearch] = useState('');
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [isHovered, setIsHovered] = useState(false); // Controls the Full Scale expansion
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ 'Compute': true });
   const [favorites, setFavorites] = useState<string[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
-
   const flatList = useRef<HTMLDivElement[]>([]);
 
-  /* ---------- FILTER ---------- */
+  // Filter Logic
   const filtered = useMemo(() => {
     return awsServices.map((section) => ({
       ...section,
       items: section.items.filter((label) =>
         label.toLowerCase().includes(search.toLowerCase())
       ),
-    })).filter(section => section.items.length > 0); // Hide empty sections
+    })).filter(section => section.items.length > 0);
   }, [search]);
 
-  /* ---------- KEYBOARD NAV ---------- */
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowDown') {
-        setActiveIndex((i) => Math.min(i + 1, flatList.current.length - 1));
-      }
-      if (e.key === 'ArrowUp') {
-        setActiveIndex((i) => Math.max(i - 1, 0));
-      }
-      // Enter key logic could trigger drag start or selection if needed
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [activeIndex]);
-
-  /* ---------- DRAG HANDLER ---------- */
+  // Drag Logic
   const onDragStart = (event: React.DragEvent, label: string) => {
-    event.dataTransfer.setData(
-      'application/reactflow',
-      JSON.stringify({ type: 'cloudNode', label })
-    );
+    event.dataTransfer.setData('application/reactflow', JSON.stringify({ type: 'cloudNode', label }));
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  /* ---------- TOGGLE FAVORITE ---------- */
   const toggleFavorite = (label: string) => {
-    setFavorites((f) =>
-      f.includes(label) ? f.filter((x) => x !== label) : [...f, label]
-    );
+    setFavorites((f) => f.includes(label) ? f.filter((x) => x !== label) : [...f, label]);
   };
 
-  // Reset index counter for flatList ref assignment
   let globalIndex = -1;
 
   return (
-    <aside className="w-64 h-screen bg-gray-900 border-r border-gray-800 flex flex-col shadow-2xl z-50">
+    <motion.aside
+      // 1. The "Canva" Animation: Width changes from 64px (w-16) to 260px
+      initial={{ width: '4rem' }}
+      animate={{ width: isHovered ? '18rem' : '4rem' }}
+      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group"
+    >
 
-      {/* Header */}
-      <div className="p-5 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md">
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Service Catalog</h2>
+      {/* --- HEADER --- */}
+      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex items-center h-16">
+        {/* Logo / Title */}
+        <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+          <div className="min-w-[32px] h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+             <LayoutGrid size={18} className="text-white" />
+          </div>
 
-        {/* Search Input */}
-        <div className="relative group">
-          <Search className="absolute left-3 top-2.5 text-gray-500 group-focus-within:text-cyan-400 transition-colors" size={16} />
-          <input
+          {/* Text hides when minimized */}
+          <motion.div
+            animate={{ opacity: isHovered ? 1 : 0 }}
+            className="flex flex-col"
+          >
+            <h2 className="text-sm font-bold text-gray-200 tracking-wide">Nebula Cloud</h2>
+            <span className="text-[10px] text-gray-500 uppercase font-semibold">Architect</span>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* --- SEARCH (Only fully visible on hover) --- */}
+      <div className="px-3 py-4">
+        <div className={`relative flex items-center ${isHovered ? 'bg-black/40' : 'bg-transparent'} rounded-lg transition-colors border border-transparent ${isHovered ? 'border-gray-700' : ''}`}>
+          <Search className={`min-w-[20px] ml-2 ${isHovered ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
+
+          <motion.input
+            layout
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search resources..."
-            className="w-full pl-9 pr-3 py-2 text-sm bg-black/40 border border-gray-700 rounded-lg text-gray-200 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all placeholder:text-gray-600"
+            placeholder="Search..."
+            className={`
+              w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-600 ml-2 h-9
+              ${!isHovered && 'hidden'} // Completely hide input when minimized
+            `}
           />
         </div>
       </div>
 
-      {/* Scrollable List */}
-      <div
-        className="
-          flex-1
-          overflow-y-auto
-          overflow-x-hidden
-          p-4 space-y-6
-          scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent
-        "
-        onWheel={(e) => e.stopPropagation()}
-      >
+      {/* --- SCROLL AREA --- */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
 
-        {/* ⭐ Favorites Section */}
-        {favorites.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-left-4 duration-300">
-            <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-              <Star size={10} fill="currentColor" /> Favorites
-            </h3>
-            <div className="grid grid-cols-1 gap-2">
-              {favorites.map((label) => {
-                 const iconPath = getCloudIconPath(label);
-                 return (
-                  <div
-                    key={`fav-${label}`}
-                    draggable
-                    onDragStart={(e) => onDragStart(e, label)}
-                    className="flex items-center gap-3 p-2 bg-gray-800/40 border border-yellow-500/20 hover:border-yellow-500/50 rounded-lg cursor-grab active:cursor-grabbing hover:bg-yellow-500/10 transition-all group"
-                  >
-                    <img src={iconPath} alt={label} className="w-5 h-5 object-contain" />
-                    <span className="text-xs font-medium text-gray-300 group-hover:text-yellow-200">{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="h-px bg-gray-800 my-4" />
-          </div>
+        {/* ⭐ Favorites (Only show if hovered OR if we implement a mini-star view) */}
+        {isHovered && favorites.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
+              <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                <Star size={10} fill="currentColor" /> Favorites
+              </h3>
+              <div className="space-y-1">
+                {favorites.map((label) => (
+                    <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10">
+                         <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4" />
+                         <span className="text-xs text-gray-300 truncate">{label}</span>
+                    </div>
+                ))}
+              </div>
+              <div className="h-px bg-gray-800 my-4" />
+            </motion.div>
         )}
 
-        {/* 📂 Categories & Items */}
+        {/* 📂 Categories */}
         {filtered.map((section) => (
-          <div key={section.category}>
-            {/* Collapse Toggle */}
+          <div key={section.category} className="mb-1">
+            {/* Category Header */}
             <button
-              onClick={() =>
-                setCollapsed((c) => ({
-                  ...c,
-                  [section.category]: !c[section.category],
-                }))
-              }
-              className="flex items-center justify-between w-full text-[11px] font-bold text-gray-500 hover:text-gray-300 uppercase tracking-widest mb-2 transition-colors group"
+              onClick={() => {
+                  if(!isHovered) setIsHovered(true); // Auto-expand if clicking icon
+                  setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
+              }}
+              className={`
+                w-full flex items-center gap-3 p-2 rounded-lg transition-all
+                ${!isHovered ? 'justify-center hover:bg-gray-800' : 'justify-between hover:bg-gray-800/50'}
+              `}
+              title={!isHovered ? section.category : ''}
             >
-              {section.category}
-              <ChevronDown
-                size={14}
-                className={`transition-transform duration-200 text-gray-600 group-hover:text-cyan-400 ${
-                  collapsed[section.category] ? '-rotate-90' : ''
-                }`}
-              />
+              {/* Left Side: Icon + Label */}
+              <div className="flex items-center gap-3">
+                 <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
+                    {categoryIcons[section.category] || <Box size={20}/>}
+                 </div>
+
+                 {/* Label: Only visible when hovered */}
+                 {isHovered && (
+                     <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="text-[11px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                     >
+                        {section.category}
+                     </motion.span>
+                 )}
+              </div>
+
+              {/* Arrow: Only visible when hovered */}
+              {isHovered && (
+                <motion.div animate={{ rotate: openCategories[section.category] ? -90 : 0 }}>
+                  <ChevronDown size={14} className="text-gray-600"/>
+                </motion.div>
+              )}
             </button>
 
-            {/* List Items */}
-            {!collapsed[section.category] && (
-              <div className="space-y-1 ml-1 pl-2 border-l border-gray-800">
-                {section.items.map((label) => {
-                  globalIndex++;
-                  const currentIndex = globalIndex; // Capture for closure
-                  const iconPath = getCloudIconPath(label); // Get the real AWS Icon
+            {/* Accordion Content (Items) */}
+            <AnimatePresence>
+              {isHovered && openCategories[section.category] && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden ml-9 border-l border-gray-800"
+                >
+                  <div className="space-y-1 py-1 pl-2">
+                    {section.items.map((label) => {
+                      globalIndex++;
+                      return (
+                        <motion.div
+                          key={label}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, label)}
+                          whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.03)' }}
+                          className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group"
+                        >
+                          {/* Mini Icon */}
+                          <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
+                             <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
+                          </div>
 
-                  return (
-                    <div
-                      key={label}
-                      ref={(el) => { if (el) flatList.current[currentIndex] = el; }}
-                      draggable
-                      onDragStart={(e) => onDragStart(e, label)}
-                      onMouseDown={() => setActiveIndex(currentIndex)}
-                      className={`
-                        relative group flex items-center gap-3 p-2 rounded-lg cursor-grab active:cursor-grabbing
-                        transition-all duration-200 border border-transparent
-                        ${activeIndex === currentIndex ? 'bg-gray-800 border-gray-700' : 'hover:bg-gray-800/50 hover:border-gray-700/50'}
-                      `}
-                    >
-                      {/* Icon Container with Glow */}
-                      <div className="w-6 h-6 flex items-center justify-center bg-gray-900 rounded p-0.5 border border-gray-700 group-hover:border-gray-500 transition-colors">
-                        <img
-                            src={iconPath}
-                            alt={label}
-                            className="w-full h-full object-contain"
-                            draggable={false}
-                        />
-                      </div>
+                          {/* Label */}
+                          <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
+                            {label}
+                          </span>
 
-                      {/* Label */}
-                      <span className="text-xs text-gray-400 group-hover:text-white transition-colors flex-1">
-                        {label}
-                      </span>
-
-                      {/* Favorite Button (Hidden until hover) */}
-                      <Star
-                        size={12}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(label);
-                        }}
-                        className={`
-                          opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer transform hover:scale-125
-                          ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600 hover:text-yellow-400'}
-                        `}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                          {/* Favorite Star (Hover only) */}
+                          <Star
+                            size={10}
+                            className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
+                          />
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         ))}
 
-        {/* Empty State */}
-        {filtered.length === 0 && (
-            <div className="text-center py-10 opacity-50">
-                <p className="text-xs text-gray-500">No services found.</p>
-            </div>
-        )}
-
       </div>
-    </aside>
+    </motion.aside>
   );
 }
