@@ -7,6 +7,4 @@ Also, include a Multi-AZ RDS PostgreSQL database that is securely accessible ONL
 provide me high available and scalable three tier architecture
 
 
-
-
 Provide me a three tire Web Architrecture with aaplication layer, web layer and Database layer. with three ec2 and load balancer in web layer and assuming it will be having traffic of 100 user and the architecture should Highl available.

@@ -1,0 +1,6 @@
+aws configure
+
+AWS Access Key ID:
+AWS Secret Access Key:
+Default region name:
+Default output format:
