@@ -1,99 +1,77 @@
 "use client";
 
 import React from 'react';
-import { Play, Loader2, Save, LayoutDashboard } from 'lucide-react'; // ✅ Added LayoutDashboard import
+import { Play, Save, LayoutDashboard, ChevronRight } from 'lucide-react';
 import Link from "next/link";
 import AuthButton from "@/components/AuthButton";
 import Image from "next/image";
+import { Button } from "@/components/ui/Button"; // <--- Import your new component
 
 interface HeaderProps {
-    session: any;       
-    onSave: () => void; 
-    onRun: () => void;  
-    saving: boolean;    
-    loading: boolean;   
+    session: any;
+    onSave: () => void;
+    onRun: () => void;
+    saving: boolean;
+    loading: boolean;
 }
 
-export default function Header({
-    session,
-    onSave,
-    onRun,
-    saving,
-    loading
-}: HeaderProps) {
+export default function Header({ session, onSave, onRun, saving, loading }: HeaderProps) {
     return (
-        <header className="w-full flex items-center justify-between px-6 py-4 bg-gray-900/90 border-b border-gray-800 backdrop-blur-md">
+        <header className="h-16 w-full flex items-center justify-between px-5 border-b border-gray-800/60 bg-[#0F1117]/90 backdrop-blur-xl z-40 sticky top-0">
 
-            
-            <div className="flex items-center gap-3">
-                <Image
-                    src="/nebula-new.png"
-                    alt="Nebula Cloud"
-                    width={56}
-                    height={56}
-                    className="rounded-full"
-                    style={{ width: 'auto', height: 'auto' }}
-                />
+            {/* LEFT: Branding */}
+            <div className="flex items-center gap-4">
+                <div className="relative group cursor-pointer">
+                    <div className="absolute -inset-1 bg-cyan-500/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <Image src="/nebula-new.png" alt="Nebula Cloud" width={32} height={32} className="relative rounded-lg shadow-lg shadow-cyan-900/20" />
+                </div>
                 <div className="flex flex-col">
-                    <span className="text-lg font-bold text-white tracking-wide">
-                        Nebula Cloud
-                    </span>
-                    <div className="text-[9px] uppercase tracking-[0.2em] text-gray-500 font-bold">Infrastructure Engine</div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">
+                        <span>Nebula Cloud</span>
+                        <ChevronRight size={14} className="text-gray-600" />
+                        <span className="text-gray-500">New Project</span>
+                    </div>
                 </div>
             </div>
-            {/* RIGHT — RUN + SAVE + DASHBOARD + AUTH */}
 
-            
-            
+            {/* RIGHT: Actions */}
             <div className="flex items-center gap-3">
 
-                {/* 1. RUN BUTTON */}
-                <button
-                    onClick={onRun}
-                    disabled={loading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all ${
-                        loading
-                            ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20'
-                    }`}
-                    title="Run Architect"
-                >
-                    {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-                    <span className="hidden sm:inline">Run</span>
-                </button>
-
-                {/* 2. SAVE BUTTON */}
-                <button
+                {/* 1. SAVE (Secondary) */}
+                <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={onSave}
-                    disabled={saving}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold border transition-all ${
-                        saving
-                            ? 'bg-gray-800 text-gray-400 cursor-wait'
-                            : 'bg-gray-800 hover:bg-gray-700 text-green-400 hover:text-green-300 border-gray-600'
-                    }`}
-                    title="Save Project"
+                    isLoading={saving}
+                    icon={<Save size={14} />}
                 >
-                    {saving
-                        ? <Loader2 size={16} className="animate-spin" />
-                        : <Save size={16} />
-                    }
                     <span className="hidden sm:inline">Save</span>
-                </button>
+                </Button>
 
-                {/* 3.  DASHBOARD BUTTON (Only shows if logged in) */}
+                {/* 2. RUN (Primary - The "Hero" Button) */}
+                <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={onRun}
+                    isLoading={loading}
+                    icon={<Play size={14} className="fill-current" />}
+                >
+                    Run Architect
+                </Button>
+
+                <div className="h-6 w-px bg-gray-800 mx-1" />
+
+                {/* 3. DASHBOARD (Ghost) */}
                 {session && (
                     <Link href="/dashboard">
-                        <button className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold border border-gray-600 bg-gray-800 hover:bg-gray-700 text-purple-400 hover:text-purple-300 transition-all">
-                            <LayoutDashboard size={16} />
-                            <span className="hidden sm:inline">Dashboard</span>
-                        </button>
+                        <Button variant="ghost" size="sm" icon={<LayoutDashboard size={16} />}>
+                            <span className="hidden lg:inline">Dashboard</span>
+                        </Button>
                     </Link>
                 )}
 
-                {/* 4. GITHUB + GOOGLE AUTH */}
                 <AuthButton />
             </div>
-
         </header>
     );
 }
