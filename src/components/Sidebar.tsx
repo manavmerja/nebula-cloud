@@ -28,8 +28,8 @@ const awsServices = [
   {
     category: 'Networking',
     items: [
-        'VPC', 'Public Subnet', 'Private Subnet', 'Internet Gateway', 'NAT Gateway',
-        'VPC Endpoint', 'Route Table', 'Application Load Balancer', 'API Gateway', 'CloudFront'
+      'VPC', 'Public Subnet', 'Private Subnet', 'Internet Gateway', 'NAT Gateway',
+      'VPC Endpoint', 'Route Table', 'Application Load Balancer', 'API Gateway', 'CloudFront'
     ],
   },
   {
@@ -169,20 +169,20 @@ export default function Sidebar() {
 
         {/* ⭐ Favorites */}
         {isHovered && favorites.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
-              <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                <Star size={10} fill="currentColor" /> Favorites
-              </h3>
-              <div className="space-y-1">
-                {favorites.map((label) => (
-                    <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10">
-                         <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4" />
-                         <span className="text-xs text-gray-300 truncate">{label}</span>
-                    </div>
-                ))}
-              </div>
-              <div className="h-px bg-gray-800 my-4" />
-            </motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
+            <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+              <Star size={10} fill="currentColor" /> Favorites
+            </h3>
+            <div className="space-y-1">
+              {favorites.map((label) => (
+                <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10">
+                  <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4" />
+                  <span className="text-xs text-gray-300 truncate">{label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="h-px bg-gray-800 my-4" />
+          </motion.div>
         )}
 
         {/* 📂 Categories */}
@@ -190,8 +190,8 @@ export default function Sidebar() {
           <div key={section.category} className="mb-1">
             <button
               onClick={() => {
-                  if(!isHovered) setIsHovered(true);
-                  setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
+                if (!isHovered) setIsHovered(true);
+                setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
               }}
               className={`
                 w-full flex items-center gap-3 p-2 rounded-lg transition-all
@@ -200,22 +200,22 @@ export default function Sidebar() {
               title={!isHovered ? section.category : ''}
             >
               <div className="flex items-center gap-3">
-                 <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
-                    {categoryIcons[section.category] || <Box size={20}/>}
-                 </div>
-                 {isHovered && (
-                     <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="text-[11px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
-                     >
-                        {section.category}
-                     </motion.span>
-                 )}
+                <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
+                  {categoryIcons[section.category] || <Box size={20} />}
+                </div>
+                {isHovered && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-[11px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap"
+                  >
+                    {section.category}
+                  </motion.span>
+                )}
               </div>
               {isHovered && (
                 <motion.div animate={{ rotate: openCategories[section.category] ? -90 : 0 }}>
-                  <ChevronDown size={14} className="text-gray-600"/>
+                  <ChevronDown size={14} className="text-gray-600" />
                 </motion.div>
               )}
             </button>
@@ -231,25 +231,24 @@ export default function Sidebar() {
                 >
                   <div className="space-y-1 py-1 pl-2">
                     {section.items.map((label) => (
-                        <motion.div
-                          key={label}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, label)}
-                          whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.03)' }}
-                          className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group"
-                        >
-                          <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
-                             <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
-                          </div>
-                          <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
-                            {label}
-                          </span>
-                          <Star
-                            size={10}
-                            className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
-                          />
-                        </motion.div>
+                      <div
+                        key={label}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, label)}
+                        className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group hover:bg-white/[0.03] hover:translate-x-1 transition-all duration-200"
+                      >
+                        <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
+                          <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
+                        </div>
+                        <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
+                          {label}
+                        </span>
+                        <Star
+                          size={10}
+                          className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
+                        />
+                      </div>
                     ))}
                   </div>
                 </motion.div>
