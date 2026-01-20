@@ -101,19 +101,45 @@ export default function Sidebar() {
       className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group"
     >
 
-      {/* --- HEADER --- */}
-      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10 flex items-center h-16 shrink-0">
+      {/* --- PROFESSIONAL HEADER --- */}
+      <div className="h-16 flex items-center px-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900 via-[#0F1117] to-[#0F1117] backdrop-blur-xl shrink-0 z-20">
+
         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-          <div className="min-w-[32px] h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
-             <LayoutGrid size={18} className="text-white" />
+
+          {/* 1. Logo Container with Ambient Glow */}
+          <div className="relative group/logo min-w-[36px] cursor-pointer">
+            {/* The Blur Effect */}
+            <div className="absolute -inset-2 bg-cyan-500/20 rounded-full blur-md opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500" />
+
+            {/* The Icon Box */}
+            <div className="relative w-9 h-9 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700/50 flex items-center justify-center shadow-xl group-hover/logo:border-cyan-500/30 transition-colors">
+               <LayoutGrid size={18} className="text-cyan-400 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" />
+            </div>
           </div>
+
+          {/* 2. Brand Text (Animated) */}
           <motion.div
-            animate={{ opacity: isHovered ? 1 : 0 }}
-            className="flex flex-col"
+            animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -10 }}
+            transition={{ duration: 0.2 }}
+            className="flex flex-col justify-center"
           >
-            <h2 className="text-sm font-bold text-gray-200 tracking-wide">Nebula Cloud</h2>
-            <span className="text-[10px] text-gray-500 uppercase font-semibold">Architect</span>
+            {/* Title with Gradient Text */}
+            <h2 className="text-sm font-bold text-white tracking-wide leading-tight">
+              Nebula<span className="text-cyan-400">.ai</span>
+            </h2>
+
+            {/* Subtitle with Status Dot */}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest">
+                Architect
+              </span>
+            </div>
           </motion.div>
+
         </div>
       </div>
 
