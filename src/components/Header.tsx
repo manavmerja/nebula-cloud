@@ -23,7 +23,7 @@ export default function Header({ session, onSave, onRun, saving, loading }: Head
             <div className="flex items-center gap-4">
                 <div className="relative group cursor-pointer">
                     <div className="absolute -inset-1 bg-cyan-500/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <Image src="/nebula-new.png" alt="Nebula Cloud" width={32} height={32} className="relative rounded-lg shadow-lg shadow-cyan-900/20" />
+                    <Image src="/nebula-new.png" alt="Nebula Cloud" width={32} height={32} className="relative rounded-lg shadow-lg shadow-cyan-900/20" style={{ objectFit: 'cover' }} />
                 </div>
                 <div className="flex flex-col">
                     <div className="flex items-center gap-2 text-sm font-semibold text-gray-200">

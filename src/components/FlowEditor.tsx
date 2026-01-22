@@ -11,15 +11,15 @@ import ReactFlow, {
     Connection,
     Edge,
     ReactFlowProvider,
-    MarkerType, 
+    MarkerType,
     Node,
     useReactFlow,
 } from 'reactflow';
-import { useSession } from "next-auth/react"; 
+import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
 // Components Imports
-import Header from './Header'; 
+import Header from './Header';
 import Sidebar from './Sidebar';
 import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
@@ -39,7 +39,13 @@ type NodeData = {
     model?: string;
     output?: string;
     label?: string;
+    terraformCode?: string;
+    summary?: string;
+    status?: string;
+    errorMessage?: string;
+    auditReport?: any[]; // 👈 NEW: Audit Report list
     onSync?: (newCode: string) => Promise<void>;
+    onFixComplete?: (fixResult: any) => void; // 👈 NEW: Fix Callback
 };
 
 // --- INITIAL DATA ---
@@ -54,7 +60,7 @@ const initialEdges = [
     { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: '#22c55e' } },
 ];
 
-const nodeTypes = {
+const nodeTypes = { // Move this OUTSIDE the function component
     promptNode: PromptNode,
     aiNode: AINode,
     resultNode: ResultNode,
@@ -71,6 +77,7 @@ function Flow() {
     const [saving, setSaving] = useState(false);
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
+    const { getNodes } = useReactFlow();
 
     //LOAD PROJECT LOGIC 
     useEffect(() => {
@@ -221,7 +228,7 @@ function Flow() {
         [reactFlowInstance, nodes, edges, setNodes],
     );
 
-    // --- RUN ARCHITECT LOGIC (AI Generation) ---
+    // --- RUN ARCHITECT LOGIC ---
     const runFlow = async () => {
         const inputNode = nodes.find(n => n.id === '1');
         const promptText = inputNode?.data?.text;
@@ -232,82 +239,141 @@ function Flow() {
         }
 
         setLoading(true);
+        // Result node shows loading state
         setNodes((nds) => nds.map((n) =>
-            n.id === '3' ? { ...n, data: { ...n.data, output: "Generating Architecture..." } } : n
+            n.id === '3' ? { ...n, data: { ...n.data, output: "Generating Architecture & Auditing Security..." } } : n
         ));
 
         try {
-            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/generate', {
+            const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: promptText }),
+                body: JSON.stringify({
+                    prompt: promptText,
+                    currentState: { nodes, edges }
+                }),
             });
 
             const data = await response.json();
-            if (data.detail) throw new Error(data.detail);
+            if (data.error) throw new Error(data.error);
 
-            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
+            // --- 1. DATA PREPARATION ---
+            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraformCode || data.terraform_code}`;
+            let auditText = "";
+            if (data.auditReport && data.auditReport.length > 0) {
+                auditText = "\n\n🚨 SECURITY AUDIT REPORT:\n";
+                data.auditReport.forEach((err: any) => {
+                    auditText += `[${err.severity}] ${err.message}\n`;
+                });
+            }
 
-            // Update result node
-            setNodes((nds) => nds.map((n) =>
-                n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
-            ));
+            // --- 2. PREPARE RAW NODES (Fix Labels & Icons) ---
+            const staticNodeIds = ['1', '2', '3'];
+            const staticEdgeIds = ['e1-2', 'e2-3'];
+            const uniqueAiNodes = data.nodes.filter((n: any) => !staticNodeIds.includes(n.id));
 
-            // --- 2. PREPARE NODES FOR DAGRE ---
-            // Create raw nodes with 0,0 position first
-            const rawNodes = data.nodes.map((node: any) => ({
-                id: node.id,
-                type: 'cloudNode',
-                data: { label: node.label },
-                position: { x: 0, y: 0 },
-            }));
+            const rawNodes = uniqueAiNodes.map((node: any) => {
+                let nodeError = null;
+                // Fix: Check both 'label' and 'data.label'
+                const trueLabel = node.label || node.data?.label || "Resource";
+                const lowerLabel = trueLabel.toLowerCase();
 
-            const rawEdges = data.edges.map((edge: any) => ({
+                // Audit Error Matching Logic (Updated for S3)
+                if (data.auditReport && Array.isArray(data.auditReport)) {
+                    nodeError = data.auditReport.find((err: any) => {
+                        const msg = err.message ? err.message.toLowerCase() : "";
+
+                        // 1. S3 Matching (Specific Fix)
+                        if (lowerLabel.includes("s3") || lowerLabel.includes("bucket")) {
+                            return msg.includes("s3") || msg.includes("bucket") || msg.includes("public-read");
+                        }
+
+                        // 2. Database Matching
+                        if (lowerLabel.includes("database") || lowerLabel.includes("rds") || lowerLabel.includes("sql")) {
+                            return msg.includes("database") || msg.includes("publicly accessible");
+                        }
+
+                        // 3. EC2 Matching
+                        if (lowerLabel.includes("instance") || lowerLabel.includes("server")) {
+                            return msg.includes("instance") || msg.includes("cost") || msg.includes("xlarge");
+                        }
+
+                        // 4. Security Group Matching
+                        if (lowerLabel.includes("security group")) {
+                            return msg.includes("security group") || msg.includes("0.0.0.0");
+                        }
+
+                        return msg.includes(lowerLabel);
+                    });
+                }
+
+                return {
+                    id: node.id,
+                    type: 'cloudNode',
+                    data: {
+                        label: trueLabel,
+                        status: nodeError ? 'error' : 'active',
+                        errorMessage: nodeError ? nodeError.message : ''
+                    },
+                    position: { x: 0, y: 0 }, // Temp position
+                };
+            });
+
+            // --- 3. PREPARE RAW EDGES ---
+            const uniqueAiEdges = data.edges
+                ? data.edges.filter((e: any) => !staticEdgeIds.includes(e.id))
+                : [];
+
+            const rawEdges = uniqueAiEdges.map((edge: any) => ({
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
                 animated: true,
-                style: { stroke: '#94a3b8' },
+                style: { stroke: '#94a3b8', strokeWidth: 2 },
+                type: 'smoothstep',
                 markerEnd: { type: MarkerType.ArrowClosed },
             }));
 
-            // --- 3. APPLY LAYOUT ALGORITHM ---
-            // 'LR' = Left to Right (horizontal tree)
+            // --- 4. AUTO-LAYOUT (Structure the Graph) ---
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 rawNodes,
                 rawEdges,
-                'LR'
+                'TB' // Top-to-Bottom
             );
 
-            // --- 4. SHIFT POSITION ---
-            // We want the new diagram to appear BELOW the main control row (x:50, y:400)
-            const X_OFFSET = 50;
-            const Y_OFFSET = 400;
+            // Shift Infrastructure Down
+            const Y_OFFSET = 450;
+            const X_OFFSET = 100;
 
-            const finalNodes = layoutedNodes.map((node) => ({
-                ...node,
+            const finalInfraNodes = layoutedNodes.map((n) => ({
+                ...n,
                 position: {
-                    x: node.position.x + X_OFFSET,
-                    y: node.position.y + Y_OFFSET
+                    x: n.position.x + X_OFFSET,
+                    y: n.position.y + Y_OFFSET
                 }
             }));
 
-            // --- 5. UPDATE STATE ---
-            // Keep the static control nodes (ID 1, 2, 3), remove old generated ones
-            setNodes((prev) => {
-                const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
-                return [...staticNodes, ...finalNodes];
+            // --- 5. FINAL UPDATE ---
+            setNodes((currentNodes) => {
+                const promptNode = currentNodes.find(n => n.id === '1');
+                const aiNode = currentNodes.find(n => n.id === '2');
+
+                const updatedResultNode = {
+                    ...currentNodes.find(n => n.id === '3')!,
+                    data: {
+                        ...currentNodes.find(n => n.id === '3')!.data,
+                        output: finalOutput + auditText,
+                        summary: data.summary,
+                        terraformCode: data.terraformCode || data.terraform_code,
+                        auditReport: data.auditReport
+                    }
+                };
+
+                // Merge Static + New Infra Nodes
+                return [promptNode!, aiNode!, updatedResultNode, ...finalInfraNodes];
             });
 
-            setEdges((prev) => {
-                const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
-                return [...staticEdges, ...layoutedEdges];
-            });
-
-            // Zoom to fit the new layout
-            setTimeout(() => {
-                reactFlowInstance?.fitView({ padding: 0.2, duration: 800 });
-            }, 100);
+            setEdges([...initialEdges, ...layoutedEdges]);
 
         } catch (error: any) {
             console.error("Error:", error);
@@ -377,12 +443,16 @@ function Flow() {
         }
     };
 
-    // --- CODE SYNC LOGIC ---
-    const onSyncCode = async (newCode: string) => {
+    // --- CODE SYNC LOGIC (FIXED: Uses useCallback & getNodes) ---
+    const onSyncCode = useCallback(async (newCode: string) => {
         console.log("Syncing visuals from code...");
+
+        // 🛑 Nodes dependency hatane ke liye getNodes() use karein
+        const currentNodes = getNodes();
+
         const currentState = {
             summary: "Existing State",
-            nodes: nodes.filter(n => n.type === 'cloudNode').map(n => ({
+            nodes: currentNodes.filter(n => n.type === 'cloudNode').map(n => ({
                 id: n.id, label: n.data.label, type: n.type, provider: 'aws', serviceType: n.data.label
             })),
             edges: [],
@@ -390,7 +460,7 @@ function Flow() {
         };
 
         try {
-            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/sync/code', {
+            const response = await fetch('/api/v1/sync/code', { // Ensure API URL matches yours (check existing code)
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -402,7 +472,7 @@ function Flow() {
             const data = await response.json();
             if (data.detail) throw new Error(data.detail);
 
-            // 1. Process new nodes from code
+            // 1. Process new nodes
             const rawNodes = data.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
@@ -419,29 +489,24 @@ function Flow() {
                 markerEnd: { type: MarkerType.ArrowClosed },
             }));
 
-            // 2. Apply Dagre Layout to sync result
+            // 2. Apply Layout
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 rawNodes,
                 rawEdges,
                 'LR'
             );
 
-            // 3. Shift them
-            const X_OFFSET = 50;
-            const Y_OFFSET = 400;
-            const finalSyncedNodes = layoutedNodes.map((node) => ({
-                ...node,
-                position: {
-                    x: node.position.x + X_OFFSET,
-                    y: node.position.y + Y_OFFSET
-                }
-            }));
-
-            // 4. Update State
+            // 3. Update State (Functional Updates are Loop-Safe)
             setNodes((prev) => {
                 const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
-                return [...staticNodes, ...finalSyncedNodes];
+                // Shift layout logic
+                const shiftedNodes = layoutedNodes.map((node) => ({
+                    ...node,
+                    position: { x: node.position.x + 50, y: node.position.y + 400 }
+                }));
+                return [...staticNodes, ...shiftedNodes];
             });
+
             setEdges((prev) => {
                 const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
                 return [...staticEdges, ...layoutedEdges];
@@ -453,24 +518,105 @@ function Flow() {
                 n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
             ));
 
-            alert("Diagram Updated Successfully! 🚀");
+            alert("Diagram Updated Successfully! 🔄");
 
         } catch (error: any) {
             console.error("Sync Error:", error);
             alert(`Sync Failed: ${error.message}`);
         }
-    };
+    }, [getNodes, setNodes, setEdges]);
 
+    // --- ✨ AUTO-FIX HANDLER (Improved: With Auto-Layout) ---
+    const handleFixComplete = useCallback((fixResult: any) => {
+        console.log("Applying Fixes...", fixResult);
+
+        const staticNodeIds = ['1', '2', '3'];
+        const staticEdgeIds = ['e1-2', 'e2-3'];
+
+        // 1. Prepare Raw Nodes (Green Status)
+        const rawNodes = fixResult.nodes.map((node: any) => ({
+            id: node.id,
+            type: 'cloudNode',
+            data: {
+                label: node.label || node.data?.label || "Resource",
+                status: 'active', // 🟢 Green (Fixed)
+                errorMessage: ''
+            },
+            position: { x: 0, y: 0 }, // Layout will fix this
+        }));
+
+        // 2. Prepare Raw Edges
+        const rawEdges = fixResult.edges.map((edge: any) => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            animated: true,
+            style: { stroke: '#94a3b8', strokeWidth: 2 },
+            type: 'smoothstep',
+            markerEnd: { type: MarkerType.ArrowClosed },
+        }));
+
+        // 3. APPLY AUTO-LAYOUT (Tree Structure) 🌳
+        // Import 'getLayoutedElements' logic here
+        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+            rawNodes,
+            rawEdges,
+            'TB' // Top-to-Bottom
+        );
+
+        // 4. Shift Infrastructure Down
+        const Y_OFFSET = 450;
+        const X_OFFSET = 100;
+
+        const finalInfraNodes = layoutedNodes.map((n) => ({
+            ...n,
+            position: {
+                x: n.position.x + X_OFFSET,
+                y: n.position.y + Y_OFFSET
+            }
+        }));
+
+        // 5. Final Update
+        setNodes((currentNodes) => {
+            const staticNodes = currentNodes.filter(n => staticNodeIds.includes(n.id));
+
+            // Result Node (3) Update
+            const updatedResultNode = {
+                ...currentNodes.find(n => n.id === '3')!,
+                data: {
+                    ...currentNodes.find(n => n.id === '3')!.data,
+                    output: `SUMMARY:\n${fixResult.summary}\n\nTERRAFORM CODE:\n${fixResult.terraformCode}`,
+                    summary: fixResult.summary,
+                    terraformCode: fixResult.terraformCode,
+                    auditReport: [] // Clear Errors
+                }
+            };
+
+            return [currentNodes[0], currentNodes[1], updatedResultNode, ...finalInfraNodes];
+        });
+
+        setEdges((currentEdges) => {
+            const staticEdges = currentEdges.filter(e => staticEdgeIds.includes(e.id));
+            return [...staticEdges, ...layoutedEdges];
+        });
+
+    }, [setNodes, setEdges]);
+
+    // Attach handlers to Result Node
     useEffect(() => {
         setNodes((nds) =>
             nds.map((node) => {
                 if (node.id === '3') {
-                    node.data = { ...node.data, onSync: onSyncCode };
+                    node.data = {
+                        ...node.data,
+                        onSync: onSyncCode,
+                        onFixComplete: handleFixComplete // 👈 Ye line jodni jaruri hai
+                    };
                 }
                 return node;
             })
         );
-    }, [setNodes]);
+    }, [setNodes, onSyncCode, handleFixComplete]);
 
     return (
         <div className="flex w-full h-screen bg-black overflow-hidden">

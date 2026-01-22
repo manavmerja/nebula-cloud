@@ -11,3 +11,33 @@ Provide me a three tire Web Architrecture with aaplication layer, web layer and 
 
 
 Create a complete enterprise architecture. Start with a VPC containing public and private subnets. The public subnet has an Internet Gateway and an ALB protected by WAF. The private subnet contains EC2 instances and an ElastiCache Redis cluster. The instances connect to S3 via a VPC Endpoint and to the internet via a NAT Gateway. Secure the subnets with NACLs
+
+
+<<<<<<<<<<<<<<<<<<<<<<<---------------------------------------->>>>>>>>>>>>>>>>>>>>>>>>>>
+
+"Create a high performance x1.32xlarge instance for AI processing."
+
+"Create a public database without security groups"
+
+"Create an S3 bucket for sensitive documents and make it public so everyone can access it."
+
+"Deploy a production MySQL database but keep it in a single availability zone to save setup time."
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<----------------------------------->>>>>>>>>>>>>>>>>>>>>>>>>
+
+"Create a 3-tier production architecture for an e-commerce app. I need a VPC
+with public and private subnets. Deploy a Web Server using an x1.32xlarge
+instance in the public subnet. Create a MySQL Database in the private subnet,
+but make it publicly accessible so my developers can connect from home.
+Also, add an S3 bucket with public-read access for storing user photos."
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,------------------------->>>>>>>>>>>>>>>>>
+
+"Create an EC2 instance with open SSH access (0.0.0.0/0) and attach an S3 bucket with public-read permissions."
+
+"Create a x1.32xlarge server connected to a MySQL database that is publicly accessible for my remote team."
+
+"Create a 3-tier architecture with a VPC. Put a web server in a public subnet,
+a PostgreSQL database in a private subnet, and an S3 bucket for logs with public access."
