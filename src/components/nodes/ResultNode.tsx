@@ -1,55 +1,113 @@
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Terminal, RefreshCw, Download, DollarSign } from 'lucide-react'; // Dollar Icon
+import { Terminal, RefreshCw, Download, DollarSign, Eye, EyeOff, Wand2 } from 'lucide-react'; // Wand2 icon added
 import Editor from '@monaco-editor/react';
 
 interface ResultNodeProps {
   data: {
-    output: string;
+    output?: string;
+    terraformCode?: string;
+    summary?: string;
+    auditReport?: any[]; // 👈 NEW: Audit Report list
     onSync: (newCode: string) => void;
+    onFixComplete?: (fixResult: any) => void; // 👈 NEW: Callback for Fixer
   }
 }
 
 function ResultNode({ data }: ResultNodeProps) {
-  const [code, setCode] = useState('');
-  const [summary, setSummary] = useState('');
-  const [cost, setCost] = useState<string | null>(null); // State for Cost
+  const [code, setCode] = useState('// Waiting for infrastructure...');
+  const [cost, setCost] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [fixing, setFixing] = useState(false); // 👈 State for Fix Button
+  const [showRaw, setShowRaw] = useState(false);
+
+  // Check if there are any errors to fix
+  const hasIssues = data.auditReport && data.auditReport.length > 0;
 
   useEffect(() => {
-    if (data.output) {
-      // 1. Parse Logic
-      const parts = data.output.split('TERRAFORM CODE:');
-      const rawSummary = parts[0]?.replace('SUMMARY:', '').trim();
-      
-      // 2. Cost Extract Karo (Regex se) 💰
-      // Dhoondo agar kahi '$' aur number likha hai
-      const costMatch = rawSummary.match(/\$\d+(\.\d{2})?/);
-      if (costMatch) {
-        setCost(costMatch[0]); // e.g., "$18.00"
-      }
+    let rawCode = "";
+    let rawSummary = "";
 
-      setSummary(rawSummary);
-      setCode(parts[1]?.trim() || '');
-      setIsDirty(false);
+    // 1. Direct Code (Priority)
+    if (data.terraformCode && data.terraformCode.length > 0) {
+      rawCode = data.terraformCode;
+      rawSummary = data.summary || "";
+    } 
+    // 2. Fallback
+    else if (data.output) {
+       if (data.output.includes('TERRAFORM CODE:')) {
+          const parts = data.output.split('TERRAFORM CODE:');
+          rawSummary = parts[0]?.replace('SUMMARY:', '').trim();
+          rawCode = parts[1]?.trim();
+       } else {
+          rawCode = data.output;
+       }
     }
-  }, [data.output]);
+
+    // 3. Clean and Set
+    if (rawCode) {
+        if (rawCode.trim().startsWith('"') && rawCode.trim().endsWith('"')) {
+            rawCode = rawCode.trim().slice(1, -1);
+        }
+        rawCode = rawCode.split('\\n').join('\n');
+        setCode(rawCode);
+    }
+
+    // 4. Extract Cost
+    if (rawSummary) {
+        const costMatch = rawSummary.match(/\$\d+(\.\d{2})?/);
+        if (costMatch) setCost(costMatch[0]);
+    }
+
+    setIsDirty(false);
+
+  }, [data]);
 
   const handleEditorChange = (value: string | undefined) => {
     setCode(value || '');
     setIsDirty(true);
   };
 
+  // --- ✨ AUTO-FIX LOGIC ---
+  const handleAutoFix = async () => {
+    if (!data.onFixComplete) return;
+    
+    setFixing(true);
+    try {
+        // Call the Fixer Agent
+        const response = await fetch('/api/fix', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                terraformCode: code,
+                auditReport: data.auditReport
+            })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        // Notify FlowEditor to update everything
+        data.onFixComplete(result);
+        alert("Issues Fixed Successfully! ✅");
+
+    } catch (error: any) {
+        console.error("Fixing Failed:", error);
+        alert(`Fix Failed: ${error.message}`);
+    } finally {
+        setFixing(false);
+    }
+  };
+
   const handleSyncClick = async () => {
     setSyncing(true);
-    await data.onSync(code);
+    if (data.onSync) await data.onSync(code);
     setSyncing(false);
     setIsDirty(false);
   };
 
   const handleDownload = () => {
-    if (!code) return;
     const blob = new Blob([code], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -62,80 +120,84 @@ function ResultNode({ data }: ResultNodeProps) {
   };
 
   return (
-    <div className="rounded-xl border border-green-500/50 bg-black/90 shadow-2xl w-[500px] overflow-hidden flex flex-col h-[500px]">
-
-      {/* --- HEADER START --- */}
-      <div className="flex items-center justify-between bg-gray-900 px-4 py-3 border-b border-green-500/30">
-        
-        {/* Left: Title + Cost Badge */}
+    <div className={`rounded-xl border bg-black/90 shadow-2xl w-[600px] overflow-hidden flex flex-col h-[600px] font-sans transition-all duration-500 ${hasIssues ? 'border-red-500/50 shadow-red-900/20' : 'border-green-500/50'}`}>
+      
+      {/* HEADER */}
+      <div className={`flex items-center justify-between px-4 py-3 border-b ${hasIssues ? 'bg-red-950/20 border-red-500/20' : 'bg-[#111] border-green-500/20'}`}>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Terminal size={16} className="text-green-400" />
-            <span className="text-sm font-bold text-green-100">
-              Infrastructure
-            </span>
-          </div>
-
-          {/* 💰 COST BADGE (Visible in Header) */}
+          <Terminal size={16} className={hasIssues ? "text-red-400" : "text-green-400"} />
+          <span className="text-sm font-bold text-gray-200">
+            {hasIssues ? `${data.auditReport?.length} Issues Detected` : 'Infrastructure Code'}
+          </span>
           {cost && (
-            <div className="flex items-center gap-1 bg-green-500/20 px-2 py-0.5 rounded text-xs font-mono text-green-400 border border-green-500/30">
-              <DollarSign size={10} />
-              <span>{cost}/mo</span>
+            <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${hasIssues ? 'bg-red-900/30 text-red-300 border-red-500/30' : 'bg-green-900/30 text-green-400 border-green-500/30'}`}>
+              <DollarSign size={10} /><span>{cost}/mo</span>
             </div>
           )}
         </div>
 
-        {/* Right: Actions */}
         <div className="flex items-center gap-2">
-          {/* Sync Button */}
-          {isDirty && (
+          {/* ✨ FIX BUTTON (Only visible if issues exist) */}
+          {hasIssues && (
             <button
-              onClick={handleSyncClick}
-              disabled={syncing}
-              className={`flex items-center gap-2 px-3 py-1 rounded text-xs font-bold transition-all ${
-                syncing ? 'bg-gray-600' : 'bg-blue-600 hover:bg-blue-500 text-white animate-pulse'
+              onClick={handleAutoFix}
+              disabled={fixing}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg ${
+                fixing 
+                  ? 'bg-gray-700 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white shadow-red-500/20 animate-pulse'
               }`}
             >
-              {syncing ? <RefreshCw size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+              <Wand2 size={12} className={fixing ? "animate-spin" : ""} />
+              {fixing ? 'Fixing...' : 'Fix Issues'}
             </button>
           )}
 
-          {/* Download Button */}
-          {code && (
-            <button
-              onClick={handleDownload}
-              title="Download main.tf"
-              className="flex items-center gap-2 px-3 py-1 rounded text-xs font-bold bg-gray-800 text-gray-300 hover:bg-green-500 hover:text-black transition-all"
-            >
-              <Download size={14} />
-              <span>.tf</span>
+          <div className="h-4 w-px bg-gray-700 mx-1" />
+
+          <button onClick={() => setShowRaw(!showRaw)} className="text-gray-400 hover:text-white" title="Toggle Debug View">
+            {showRaw ? <EyeOff size={14}/> : <Eye size={14}/>}
+          </button>
+          
+          {isDirty && !hasIssues && (
+            <button onClick={handleSyncClick} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold ${syncing ? 'bg-gray-700' : 'bg-blue-600 text-white'}`}>
+              <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />Sync
             </button>
           )}
+
+          <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={16} /></button>
         </div>
       </div>
-      {/* --- HEADER END --- */}
 
-      <Handle type="target" position={Position.Left} className="w-3 h-3 !bg-green-500" />
+      <Handle type="target" position={Position.Left} className={`!w-3 !h-3 !border-0 ${hasIssues ? '!bg-red-500' : '!bg-green-500'}`} />
 
-      {/* Editor Area */}
+      {/* EDITOR AREA */}
       <div className="flex-1 relative bg-[#1e1e1e]">
-        <Editor
-          height="100%"
-          defaultLanguage="hcl"
-          theme="vs-dark"
-          value={code}
-          onChange={handleEditorChange}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 12,
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            padding: { top: 10 }
-          }}
-        />
+        {showRaw ? (
+             <textarea 
+                className="w-full h-full bg-black text-green-400 p-4 font-mono text-xs" 
+                value={code} 
+                readOnly 
+             />
+        ) : (
+            <Editor
+                key={code.length}
+                height="100%"
+                defaultLanguage="hcl"
+                theme="vs-dark"
+                value={code}
+                onChange={handleEditorChange}
+                options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    readOnly: fixing 
+                }}
+            />
+        )}
       </div>
-      
-      {/* Note: Maine Footer hata diya kyunki Cost ab upar Header me hai */}
     </div>
   );
 }
