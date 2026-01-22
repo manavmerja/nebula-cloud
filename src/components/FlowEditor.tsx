@@ -3,7 +3,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
     MiniMap,
-    Controls,
     Background,
     useNodesState,
     useEdgesState,
@@ -11,27 +10,28 @@ import ReactFlow, {
     Connection,
     Edge,
     ReactFlowProvider,
-    MarkerType, 
+    MarkerType,
     Node,
     useReactFlow,
 } from 'reactflow';
-import { useSession } from "next-auth/react"; 
+import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 
-// Components Imports
-import Header from './Header'; 
+// --- COMPONENT IMPORTS ---
+import Header from './Header';
 import Sidebar from './Sidebar';
+import CanvasControls from '@/components/CanvasControls';
+import CustomConnectionLine from './CustomConnectionLine';
+import PropertiesPanel from '@/components/PropertiesPanel';
+
+// --- NODE IMPORTS ---
 import 'reactflow/dist/style.css';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
 
-
-// 1. IMPORT THE LAYOUT UTILITY WE JUST MADE
 import { getLayoutedElements } from './layoutUtils';
-
-import 'reactflow/dist/style.css';
 
 // --- TYPES ---
 type NodeData = {
@@ -72,24 +72,23 @@ function Flow() {
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
 
-    //LOAD PROJECT LOGIC 
+    // ✅ NEW STATE: Track which node is clicked
+    const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+
+    // 1. LOAD PROJECT LOGIC
     useEffect(() => {
         const loadProject = async () => {
-            if (!projectId) return; // Agar URL me ID nahi hai, to ruk jao
+            if (!projectId) return;
 
             setLoading(true);
             try {
                 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
-
-                // Backend se specific project fetch karo
-                // (Note: Backend me ye route hum abhi banayenge)
                 const response = await fetch(`${API_BASE}/api/v1/project/${projectId}`);
 
                 if (!response.ok) throw new Error("Project not found");
 
                 const data = await response.json();
 
-                // Canvas par nodes aur edges set karo
                 if (data.nodes) setNodes(data.nodes);
                 if (data.edges) setEdges(data.edges);
 
@@ -104,9 +103,9 @@ function Flow() {
         };
 
         loadProject();
-    }, [projectId, setNodes, setEdges]); // Dependencies
+    }, [projectId, setNodes, setEdges]);
 
-    //SAVE PROJECT LOGIC 
+    // 2. SAVE PROJECT LOGIC
     const saveProject = async () => {
         if (!session || !session.user) {
             alert("Please login to save your project! 🔒");
@@ -157,17 +156,17 @@ function Flow() {
                 throw new Error(errorMessage);
             }
 
-            alert(" Project Saved Successfully!");
+            alert("Project Saved Successfully! 🚀");
 
         } catch (error: any) {
             console.error("Save Error:", error);
-            alert(` Save Failed:\n${error.message}`);
+            alert(`Save Failed:\n${error.message}`);
         } finally {
             setSaving(false);
         }
     };
 
-    // Input sync logic
+    // 3. INPUT SYNC LOGIC (Prompt Node)
     useEffect(() => {
         setNodes((nds) =>
             nds.map((node) => {
@@ -179,149 +178,9 @@ function Flow() {
         );
     }, [userInput, setNodes]);
 
-    const onConnect = useCallback(
-        (params: Edge | Connection) => {
-            setEdges((eds) => addEdge(params, eds));
-            const newEdges = addEdge(params, edges);
-            triggerVisualSync(nodes, newEdges);
-        },
-        [setEdges, nodes, edges],
-    );
-
-    // --- DRAG & DROP LOGIC ---
-    const onDragOver = useCallback((event: React.DragEvent) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-    }, []);
-
-    const onDrop = useCallback(
-        (event: React.DragEvent) => {
-            event.preventDefault();
-            if (!reactFlowInstance) return;
-
-            const dataStr = event.dataTransfer.getData('application/reactflow');
-            if (!dataStr) return;
-
-            const { type, label } = JSON.parse(dataStr);
-            const position = reactFlowInstance.screenToFlowPosition({
-                x: event.clientX,
-                y: event.clientY,
-            });
-
-            const newNode: Node = {
-                id: `${type}-${Date.now()}`,
-                type,
-                position,
-                data: { label: label },
-            };
-
-            setNodes((nds) => nds.concat(newNode));
-            triggerVisualSync(nodes.concat(newNode), edges);
-        },
-        [reactFlowInstance, nodes, edges, setNodes],
-    );
-
-    // --- RUN ARCHITECT LOGIC (AI Generation) ---
-    const runFlow = async () => {
-        const inputNode = nodes.find(n => n.id === '1');
-        const promptText = inputNode?.data?.text;
-
-        if (!promptText) {
-            alert("Please enter a prompt first!");
-            return;
-        }
-
-        setLoading(true);
-        setNodes((nds) => nds.map((n) =>
-            n.id === '3' ? { ...n, data: { ...n.data, output: "Generating Architecture..." } } : n
-        ));
-
-        try {
-            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/generate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: promptText }),
-            });
-
-            const data = await response.json();
-            if (data.detail) throw new Error(data.detail);
-
-            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
-
-            // Update result node
-            setNodes((nds) => nds.map((n) =>
-                n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
-            ));
-
-            // --- 2. PREPARE NODES FOR DAGRE ---
-            // Create raw nodes with 0,0 position first
-            const rawNodes = data.nodes.map((node: any) => ({
-                id: node.id,
-                type: 'cloudNode',
-                data: { label: node.label },
-                position: { x: 0, y: 0 },
-            }));
-
-            const rawEdges = data.edges.map((edge: any) => ({
-                id: edge.id,
-                source: edge.source,
-                target: edge.target,
-                animated: true,
-                style: { stroke: '#94a3b8' },
-                markerEnd: { type: MarkerType.ArrowClosed },
-            }));
-
-            // --- 3. APPLY LAYOUT ALGORITHM ---
-            // 'LR' = Left to Right (horizontal tree)
-            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-                rawNodes,
-                rawEdges,
-                'LR'
-            );
-
-            // --- 4. SHIFT POSITION ---
-            // We want the new diagram to appear BELOW the main control row (x:50, y:400)
-            const X_OFFSET = 50;
-            const Y_OFFSET = 400;
-
-            const finalNodes = layoutedNodes.map((node) => ({
-                ...node,
-                position: {
-                    x: node.position.x + X_OFFSET,
-                    y: node.position.y + Y_OFFSET
-                }
-            }));
-
-            // --- 5. UPDATE STATE ---
-            // Keep the static control nodes (ID 1, 2, 3), remove old generated ones
-            setNodes((prev) => {
-                const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
-                return [...staticNodes, ...finalNodes];
-            });
-
-            setEdges((prev) => {
-                const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
-                return [...staticEdges, ...layoutedEdges];
-            });
-
-            // Zoom to fit the new layout
-            setTimeout(() => {
-                reactFlowInstance?.fitView({ padding: 0.2, duration: 800 });
-            }, 100);
-
-        } catch (error: any) {
-            console.error("Error:", error);
-            setNodes((nds) => nds.map((n) =>
-                n.id === '3' ? { ...n, data: { ...n.data, output: `Error: ${error.message}` } } : n
-            ));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // --- VISUAL SYNC LOGIC ---
+    // 4. VISUAL SYNC LOGIC (Updates Backend when you drag a line)
     const triggerVisualSync = async (currentNodes: Node[], currentEdges: Edge[]) => {
-        console.log(" Auto-Syncing Code from Visuals...");
+        console.log("Auto-Syncing Code from Visuals...");
         setNodes((nds) => nds.map((n) =>
             n.id === '3' ? { ...n, data: { ...n.data, output: "Syncing changes..." } } : n
         ));
@@ -377,7 +236,148 @@ function Flow() {
         }
     };
 
-    // --- CODE SYNC LOGIC ---
+    // 5. CONNECT HANDLER (Uses Laser Line Logic + Sync)
+    const onConnect = useCallback(
+        (params: Edge | Connection) => {
+            const edgeOptions = {
+                ...params,
+                animated: true,
+                style: { stroke: '#22d3ee', strokeWidth: 2 }
+            };
+            setEdges((eds) => addEdge(edgeOptions, eds));
+            // Trigger sync with new edges
+            const newEdges = addEdge(edgeOptions, edges);
+            triggerVisualSync(nodes, newEdges);
+        },
+        [setEdges, nodes, edges],
+    );
+
+    // 6. DRAG & DROP LOGIC (Crucial Fix)
+    const onDragOver = useCallback((event: React.DragEvent) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }, []);
+
+    const onDrop = useCallback(
+        (event: React.DragEvent) => {
+            event.preventDefault();
+            if (!reactFlowInstance) return;
+
+            const dataStr = event.dataTransfer.getData('application/reactflow');
+            if (!dataStr) return;
+
+            const { type, label } = JSON.parse(dataStr);
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            const newNode: Node = {
+                id: `${type}-${Date.now()}`,
+                type,
+                position,
+                data: { label: label },
+            };
+
+            const updatedNodes = nodes.concat(newNode);
+            setNodes(updatedNodes);
+
+            // Sync with backend immediately after drop
+            triggerVisualSync(updatedNodes, edges);
+        },
+        [reactFlowInstance, nodes, edges, setNodes],
+    );
+
+    // 7. RUN ARCHITECT LOGIC (AI Generation)
+    const runFlow = async () => {
+        const inputNode = nodes.find(n => n.id === '1');
+        const promptText = inputNode?.data?.text;
+
+        if (!promptText) {
+            alert("Please enter a prompt first!");
+            return;
+        }
+
+        setLoading(true);
+        setNodes((nds) => nds.map((n) =>
+            n.id === '3' ? { ...n, data: { ...n.data, output: "Generating Architecture..." } } : n
+        ));
+
+        try {
+            const response = await fetch('https://manavmerja-nebula-backend-live.hf.space/api/v1/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: promptText }),
+            });
+
+            const data = await response.json();
+            if (data.detail) throw new Error(data.detail);
+
+            const finalOutput = `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraform_code}`;
+
+            setNodes((nds) => nds.map((n) =>
+                n.id === '3' ? { ...n, data: { ...n.data, output: finalOutput } } : n
+            ));
+
+            // Auto-Layout Logic
+            const rawNodes = data.nodes.map((node: any) => ({
+                id: node.id,
+                type: 'cloudNode',
+                data: { label: node.label },
+                position: { x: 0, y: 0 },
+            }));
+
+            const rawEdges = data.edges.map((edge: any) => ({
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                animated: true,
+                style: { stroke: '#94a3b8' },
+                markerEnd: { type: MarkerType.ArrowClosed },
+            }));
+
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                rawNodes,
+                rawEdges,
+                'LR'
+            );
+
+            const X_OFFSET = 50;
+            const Y_OFFSET = 400;
+
+            const finalNodes = layoutedNodes.map((node) => ({
+                ...node,
+                position: {
+                    x: node.position.x + X_OFFSET,
+                    y: node.position.y + Y_OFFSET
+                }
+            }));
+
+            setNodes((prev) => {
+                const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
+                return [...staticNodes, ...finalNodes];
+            });
+
+            setEdges((prev) => {
+                const staticEdges = prev.filter(e => ['e1-2', 'e2-3'].includes(e.id));
+                return [...staticEdges, ...layoutedEdges];
+            });
+
+            setTimeout(() => {
+                reactFlowInstance?.fitView({ padding: 0.2, duration: 800 });
+            }, 100);
+
+        } catch (error: any) {
+            console.error("Error:", error);
+            setNodes((nds) => nds.map((n) =>
+                n.id === '3' ? { ...n, data: { ...n.data, output: `Error: ${error.message}` } } : n
+            ));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 8. CODE SYNC LOGIC (Updates Visuals when Terraform changes)
     const onSyncCode = async (newCode: string) => {
         console.log("Syncing visuals from code...");
         const currentState = {
@@ -402,7 +402,6 @@ function Flow() {
             const data = await response.json();
             if (data.detail) throw new Error(data.detail);
 
-            // 1. Process new nodes from code
             const rawNodes = data.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
@@ -419,14 +418,12 @@ function Flow() {
                 markerEnd: { type: MarkerType.ArrowClosed },
             }));
 
-            // 2. Apply Dagre Layout to sync result
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 rawNodes,
                 rawEdges,
                 'LR'
             );
 
-            // 3. Shift them
             const X_OFFSET = 50;
             const Y_OFFSET = 400;
             const finalSyncedNodes = layoutedNodes.map((node) => ({
@@ -437,7 +434,6 @@ function Flow() {
                 }
             }));
 
-            // 4. Update State
             setNodes((prev) => {
                 const staticNodes = prev.filter(n => ['1', '2', '3'].includes(n.id));
                 return [...staticNodes, ...finalSyncedNodes];
@@ -472,6 +468,7 @@ function Flow() {
         );
     }, [setNodes]);
 
+    // --- RENDER ---
     return (
         <div className="flex w-full h-screen bg-black overflow-hidden">
             {/* 1. LEFT SIDEBAR */}
@@ -484,7 +481,7 @@ function Flow() {
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
                 </div>
 
-                {/* 3. NEW HEADER */}
+                {/* 3. HEADER */}
                 <div className="relative z-20">
                     <Header
                         session={session}
@@ -509,8 +506,18 @@ function Flow() {
                         nodeTypes={nodeTypes}
                         fitView
                         style={{ background: 'transparent' }}
+
+                        // NEW: Custom Laser Line
+                        connectionLineComponent={CustomConnectionLine}
+                        connectionLineStyle={{ stroke: '#22d3ee', strokeWidth: 2 }}
+
+                        // NEW: Click Handlers for Properties Panel
+                        onNodeClick={(e, node) => setSelectedNode(node)}
+                        onPaneClick={() => setSelectedNode(null)}
                     >
-                        <Controls className="!bg-black/50 !border-white/10 !fill-white shadow-2xl" />
+                        {/* Custom Floating Dock */}
+                        <CanvasControls />
+
                         <MiniMap
                             nodeColor={(n: any) => {
                                 if (n.type === 'promptNode') return '#06b6d4';
@@ -524,6 +531,13 @@ function Flow() {
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
                     </ReactFlow>
                 </div>
+
+                {/* NEW: Properties Panel (Overlays the Canvas) */}
+                <PropertiesPanel
+                    selectedNode={selectedNode}
+                    onClose={() => setSelectedNode(null)}
+                />
+
             </div>
         </div>
     );
