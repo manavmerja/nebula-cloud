@@ -7,11 +7,11 @@ import AuthButton from "@/components/AuthButton";
 import Image from "next/image";
 
 interface HeaderProps {
-    session: any;       
-    onSave: () => void; 
-    onRun: () => void;  
-    saving: boolean;    
-    loading: boolean;   
+    session: any;
+    onSave: () => void;
+    onRun: () => void;
+    saving: boolean;
+    loading: boolean;
 }
 
 export default function Header({
@@ -24,15 +24,15 @@ export default function Header({
     return (
         <header className="w-full flex items-center justify-between px-6 py-4 bg-gray-900/90 border-b border-gray-800 backdrop-blur-md">
 
-            
+
             <div className="flex items-center gap-3">
                 <Image
                     src="/nebula-new.png"
                     alt="Nebula Cloud"
-                    width={56}
-                    height={56}
-                    className="rounded-full"
-                    style={{ width: 'auto', height: 'auto' }}
+                    width={40}
+                    height={40}
+                    className="rounded-full object-cover"
+                    priority
                 />
                 <div className="flex flex-col">
                     <span className="text-lg font-bold text-white tracking-wide">
@@ -43,19 +43,18 @@ export default function Header({
             </div>
             {/* RIGHT — RUN + SAVE + DASHBOARD + AUTH */}
 
-            
-            
+
+
             <div className="flex items-center gap-3">
 
                 {/* 1. RUN BUTTON */}
                 <button
                     onClick={onRun}
                     disabled={loading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all ${
-                        loading
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all ${loading
                             ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                             : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-cyan-500/20'
-                    }`}
+                        }`}
                     title="Run Architect"
                 >
                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
@@ -66,11 +65,10 @@ export default function Header({
                 <button
                     onClick={onSave}
                     disabled={saving}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold border transition-all ${
-                        saving
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold border transition-all ${saving
                             ? 'bg-gray-800 text-gray-400 cursor-wait'
                             : 'bg-gray-800 hover:bg-gray-700 text-green-400 hover:text-green-300 border-gray-600'
-                    }`}
+                        }`}
                     title="Save Project"
                 >
                     {saving
