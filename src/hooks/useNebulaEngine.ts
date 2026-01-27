@@ -19,6 +19,19 @@ export function useNebulaEngine(
     const [aiLoading, setAiLoading] = useState(false);
     const { getNodes, getEdges } = useReactFlow();
 
+    const extractLabel = (node: any) => {
+        // 1. Direct Label
+        if (node.label) return node.label;
+        // 2. Data Label
+        if (node.data?.label) return node.data.label;
+        // 3. Service Type (fallback)
+        if (node.data?.serviceType) return node.data.serviceType;
+        // 4. Name (fallback)
+        if (node.name) return node.name;
+        // 5. Final Default
+        return "Resource";
+    };
+
     // --- HELPER: Process & Layout Data ---
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
         // 👇 FIX: Added 'index' to ensure Unique IDs
@@ -135,16 +148,16 @@ export function useNebulaEngine(
         }
     }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode]);
 
-    // --- 2. AGENT C: FIXER ---
+    // 👇👇👇 UPDATED RUN FIXER 👇👇👇
     const runFixer = useCallback(async (fixResult: any) => {
         console.log("Applying Fixes...", fixResult);
 
-       const rawNodes = fixResult.nodes.map((node: any) => ({
+        // Strong Label Extraction
+        const rawNodes = fixResult.nodes.map((node: any) => ({
             id: node.id,
             type: 'cloudNode',
             data: { 
-                // Label dhoondo: Ya to node.label, ya node.data.label, ya fallback "Resource"
-                label: node.label || node.data?.label || "Resource", 
+                label: extractLabel(node), // 👈 Using helper
                 status: 'active' 
             },
             position: { x: 0, y: 0 }
@@ -169,22 +182,20 @@ export function useNebulaEngine(
         });
     }, [processLayout, setNodes, setEdges, updateResultNode]);
 
-    // --- 3. SMART SYNC (Fixed: Updates Visuals too) ---
+   // 👇👇👇 UPDATED SYNC VISUALS 👇👇👇
     const syncVisualsToCode = useCallback(async () => {
         setAiLoading(true);
-        updateResultNode({ output: "🤖 Analyzing Visual Changes, Fixing Issues & Updating Code..." });
+        updateResultNode({ output: "🤖 Analyzing Visual Changes & Fixing..." });
 
         const currentNodes = getNodes();
         const currentEdges = getEdges();
         
-        // 1. Get Existing Code
         const resultNode = currentNodes.find(n => n.id === '3');
         let existingCode = "";
         if (resultNode?.data?.terraformCode) {
             existingCode = resultNode.data.terraformCode;
         }
 
-        // 2. Prepare Topology
         const topology = {
             nodes: currentNodes
                 .filter(n => n.type === 'cloudNode')
@@ -195,8 +206,8 @@ export function useNebulaEngine(
         };
 
         if (topology.nodes.length === 0) {
-             updateResultNode({
-                output: "// Canvas is empty. Drag resources to start.",
+            updateResultNode({
+                output: "// Canvas is empty.",
                 terraformCode: "",
                 summary: "Canvas Cleared",
                 auditReport: []
@@ -214,7 +225,7 @@ export function useNebulaEngine(
                     auditReport: [
                         { 
                             level: "info", 
-                            message: "SYNC_REQUEST_INCREMENTAL: The user updated the diagram visually. Compare the provided TOPOLOGY_DATA with the provided TERRAFORM_CODE. Add missing resources, remove deleted ones, update connections, and FIX any security issues found in the process. Return the UPDATED nodes and edges JSON." 
+                            message: "SYNC_REQUEST_INCREMENTAL: The user updated the diagram. Compare TOPOLOGY_DATA with TERRAFORM_CODE. Return the UPDATED nodes and edges JSON. Ensure every node has a 'label' field (e.g. 'VPC', 'S3 Bucket')." 
                         },
                         {
                             level: "info",
@@ -227,24 +238,19 @@ export function useNebulaEngine(
             const result = await response.json();
             if (result.error) throw new Error(result.error);
 
-            // AI ne jo naye nodes/edges bheje hain (jisme red color nahi hai), unhe process karo
-            console.log("Sync Result Nodes:", result.nodes);
-
-          const rawNodes = result.nodes.map((node: any) => ({
+            // Strong Label Extraction Here Too
+            const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
                 data: { 
-                    // Same robust check here
-                    label: node.label || node.data?.label || "Resource", 
+                    label: extractLabel(node), // 👈 Using helper
                     status: node.data?.status || 'active' 
                 },
                 position: { x: 0, y: 0 }
             }));
-            
-            // Layout calculate karo
+
             const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
 
-            // Canvas update karo (Purane UI nodes + Naye Cloud nodes)
             setNodes(prev => [
                 ...prev.filter(n => ['1', '2', '3'].includes(n.id)),
                 ...finalNodes
@@ -258,7 +264,7 @@ export function useNebulaEngine(
             updateResultNode({
                 output: `SUMMARY:\n${result.summary}\n\nTERRAFORM CODE:\n${result.terraformCode}`,
                 terraformCode: result.terraformCode,
-                auditReport: [] // Clear errors in editor
+                auditReport: [] 
             });
 
         } catch (error: any) {
@@ -267,7 +273,7 @@ export function useNebulaEngine(
         } finally {
             setAiLoading(false);
         }
-    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges]); 
+    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges]);
 
     return { runArchitect, runFixer, syncVisualsToCode, aiLoading };
 }
