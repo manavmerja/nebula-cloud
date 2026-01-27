@@ -41,3 +41,12 @@ Also, add an S3 bucket with public-read access for storing user photos."
 
 "Create a 3-tier architecture with a VPC. Put a web server in a public subnet,
 a PostgreSQL database in a private subnet, and an S3 bucket for logs with public access."
+
+
+<<<<<<<<<<<<<<<<<<<<<<------------------>>>>>>>>>>
+
+Load Balancing
+
+Key Rotation Strategy
+
+<<<<<<<<<<<<<<<<<<<<<<------------------>>>>>>>>>>
