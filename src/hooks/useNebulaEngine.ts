@@ -139,10 +139,14 @@ export function useNebulaEngine(
     const runFixer = useCallback(async (fixResult: any) => {
         console.log("Applying Fixes...", fixResult);
 
-        const rawNodes = fixResult.nodes.map((node: any) => ({
+       const rawNodes = fixResult.nodes.map((node: any) => ({
             id: node.id,
             type: 'cloudNode',
-            data: { label: node.label, status: 'active' },
+            data: { 
+                // Label dhoondo: Ya to node.label, ya node.data.label, ya fallback "Resource"
+                label: node.label || node.data?.label || "Resource", 
+                status: 'active' 
+            },
             position: { x: 0, y: 0 }
         }));
 
@@ -226,14 +230,17 @@ export function useNebulaEngine(
             // AI ne jo naye nodes/edges bheje hain (jisme red color nahi hai), unhe process karo
             console.log("Sync Result Nodes:", result.nodes);
 
-            const rawNodes = result.nodes.map((node: any) => ({
+          const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
-                // AI agar status 'active' bhej raha hai, to red border hat jayega
-                data: { label: node.label, status: node.data?.status || 'active' },
+                data: { 
+                    // Same robust check here
+                    label: node.label || node.data?.label || "Resource", 
+                    status: node.data?.status || 'active' 
+                },
                 position: { x: 0, y: 0 }
             }));
-
+            
             // Layout calculate karo
             const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
 
