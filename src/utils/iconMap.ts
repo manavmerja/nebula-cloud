@@ -10,6 +10,11 @@
  */
 
 export const getCloudIconPath = (label: string): string => {
+
+  if (!label || typeof label !== 'string') {
+      return '/aws-icons/ec2.svg'; // Default fallback
+  }
+
   const lowerLabel = label.toLowerCase();
 
   // --------------------------------------------------------

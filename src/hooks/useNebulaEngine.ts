@@ -138,6 +138,16 @@ export function useNebulaEngine(
 
         // 🟢 STEP 1: Get the exact current positions from the screen
         const currentNodes = getNodes();
+       const rawNodes = fixResult.nodes.map((node: any) => ({
+            id: node.id,
+            type: 'cloudNode',
+            data: {
+                // Label dhoondo: Ya to node.label, ya node.data.label, ya fallback "Resource"
+                label: node.label || node.data?.label || "Resource",
+                status: 'active'
+            },
+            position: { x: 0, y: 0 }
+        }));
 
         // 🟢 STEP 2: Smart Merge - Keep position if node exists
         const finalNodes = fixResult.nodes.map((fixedNode: any) => {
@@ -228,13 +238,18 @@ export function useNebulaEngine(
             // Or if you want a full re-layout for Sync, you can use processLayout here.
             // For now, let's treat Sync as a "Regenerate" event which allows layout updates.
 
-            const rawNodes = result.nodes.map((node: any) => ({
+          const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
-                data: { label: node.label, status: 'active' },
+                data: {
+                    // Same robust check here
+                    label: node.label || node.data?.label || "Resource",
+                    status: node.data?.status || 'active'
+                },
                 position: { x: 0, y: 0 }
             }));
 
+            // Layout calculate karo
             const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
 
             setNodes(prev => [
