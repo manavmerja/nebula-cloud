@@ -1,17 +1,23 @@
 // AI Engine ne Sambhade che like Call karawo te 
 
 import { useState, useCallback } from 'react';
-import { Node, Edge, MarkerType, useReactFlow } from 'reactflow'; // useReactFlow added
+import { Node, Edge, MarkerType, useReactFlow } from 'reactflow';
 import { getLayoutedElements } from '../components/layoutUtils';
 
+// Interface defined at top
+interface CloudNode {
+    id: string;
+    type: string;
+    data: { label: string };
+}
+
 export function useNebulaEngine(
-    // nodes/edges hataye, ab hum direct internal state use karenge
-    setNodes: React.Dispatch<React.SetStateAction<Node[]>>, 
+    setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
     setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
     updateResultNode: (data: any) => void
 ) {
     const [aiLoading, setAiLoading] = useState(false);
-    const { getNodes, getEdges } = useReactFlow(); // 👈 Access current state directly
+    const { getNodes, getEdges } = useReactFlow();
 
     // --- HELPER: Process & Layout Data ---
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
@@ -43,7 +49,7 @@ export function useNebulaEngine(
     }, []);
 
     // --- 1. AGENT A & B: GENERATE + AUDIT ---
-    const runArchitect = useCallback(async (promptText: string) => { // 👈 Wrapped in useCallback
+    const runArchitect = useCallback(async (promptText: string) => {
         if (!promptText) {
             alert("Please enter a prompt first!");
             return;
@@ -52,7 +58,6 @@ export function useNebulaEngine(
         setAiLoading(true);
         updateResultNode({ output: "Generating Architecture & Auditing Security..." });
 
-        // 👈 Get fresh state dynamically (No dependency on 'nodes' prop)
         const currentNodes = getNodes();
         const currentEdges = getEdges();
 
@@ -130,7 +135,7 @@ export function useNebulaEngine(
     }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode]);
 
     // --- 2. AGENT C: FIXER ---
-    const runFixer = useCallback(async (fixResult: any) => { // 👈 Wrapped in useCallback
+    const runFixer = useCallback(async (fixResult: any) => {
         console.log("Applying Fixes...", fixResult);
 
         const rawNodes = fixResult.nodes.map((node: any) => ({
@@ -159,10 +164,67 @@ export function useNebulaEngine(
         });
     }, [processLayout, setNodes, setEdges, updateResultNode]);
 
-    // --- 3. SYNC VISUALS ---
+    // --- 3. SYNC VISUALS (The New Feature) ---
+    // ✅ This is now INSIDE the function scope
     const syncVisualsToCode = useCallback(async () => {
-        console.log("Sync triggered");
-    }, []);
+        setAiLoading(true);
+        updateResultNode({ output: "🤖 Reading Diagram & Generating Code..." });
 
-    return { runArchitect, runFixer, aiLoading, syncVisualsToCode };
+        const currentNodes = getNodes();
+        const currentEdges = getEdges();
+
+        // 1. Prepare Topology for AI
+        const topology = {
+            nodes: currentNodes
+                .filter(n => n.type === 'cloudNode')
+                .map((n: any) => ({ id: n.id, label: n.data.label })),
+            edges: currentEdges
+                .filter(e => e.source !== '1' && e.target !== '3') 
+                .map(e => ({ source: e.source, target: e.target }))
+        };
+
+        if (topology.nodes.length === 0) {
+            alert("Canvas is empty! Drag some items first.");
+            setAiLoading(false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/fix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    terraformCode: "# Code will be generated from Visual Topology", 
+                    auditReport: [
+                        { 
+                            level: "info", 
+                            message: "SYNC_REQUEST: The user has manually updated the diagram. IGNORE the input code. Generate Terraform code that PERFECTLY matches the provided nodes and edges." 
+                        },
+                        {
+                            level: "info",
+                            message: `TOPOLOGY_DATA: ${JSON.stringify(topology)}`
+                        }
+                    ]
+                })
+            });
+
+            const result = await response.json();
+            if (result.error) throw new Error(result.error);
+
+            updateResultNode({
+                output: `SUMMARY:\n${result.summary}\n\nTERRAFORM CODE:\n${result.terraformCode}`,
+                terraformCode: result.terraformCode,
+                auditReport: [] 
+            });
+
+        } catch (error: any) {
+            console.error("Sync Error:", error);
+            updateResultNode({ output: `Sync Error: ${error.message}` });
+        } finally {
+            setAiLoading(false);
+        }
+    }, [getNodes, getEdges, updateResultNode]);
+
+    // ✅ Return all functions
+    return { runArchitect, runFixer, syncVisualsToCode, aiLoading };
 }

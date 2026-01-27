@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { callAIModel } from '../generate/agents/config';
+// 👇 Change 1: 'AgentType' ko bhi import karein
+import { callAIModel, AgentType } from '../generate/agents/config';
 
 // --- 🧠 AGENT C: THE FIXER ---
 const FIXER_PROMPT = `
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
     try {
         const { terraformCode, auditReport } = await req.json();
 
+        // Basic Validation
         if (!terraformCode || !auditReport) {
             return NextResponse.json({ error: 'Missing code or audit report' }, { status: 400 });
         }
@@ -62,7 +64,15 @@ Please rewrite the code to fix these issues.
 IMPORTANT: Generate valid JSON. Don't leave out Subnets or Security Groups from the nodes list.
 `;
 
-        const fixedResult = await callAIModel(FIXER_PROMPT, userMessage, "Agent C (Fixer)");
+        // 👇 Change 2: Safety Check for Array & Explicit Typing
+        const isSyncRequest = Array.isArray(auditReport) && auditReport.some((r: any) => r.message?.includes('SYNC_REQUEST'));
+        
+        // 👇 Change 3: Define type explicitly
+        const agentType: AgentType = isSyncRequest ? 'SYNC' : 'FIXER';
+
+        console.log(`🔧 Fix Route called. Mode: ${agentType}`); // Debug log
+
+        const fixedResult = await callAIModel(FIXER_PROMPT, userMessage, agentType);
 
         if (!fixedResult) {
             throw new Error("Failed to fix infrastructure.");

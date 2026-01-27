@@ -46,7 +46,7 @@ function Flow() {
 
     // 2. 🧠 AI Engine
     // 👇 CHANGE: Removed 'nodes' and 'edges' from arguments
-    const { runArchitect, runFixer, aiLoading } = useNebulaEngine(
+    const { runArchitect, runFixer, syncVisualsToCode, aiLoading } = useNebulaEngine(
         setNodes, setEdges, updateResultNode
     );
 
@@ -123,22 +123,27 @@ function Flow() {
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
-                // 👇 SAFETY CHECK: Agar function same hai, to update mat karo
-                if (node.data.onSync === onSyncCode && node.data.onFixComplete === runFixer) {
+                // Infinite Loop Prevention Check
+                if (
+                    node.data.onSync === onSyncCode && 
+                    node.data.onFixComplete === runFixer &&
+                    node.data.onVisualSync === syncVisualsToCode // 👈 Check added
+                ) {
                     return node;
                 }
                 return {
                     ...node,
                     data: {
                         ...node.data,
-                        onSync: onSyncCode,
-                        onFixComplete: runFixer
+                        onSync: onSyncCode,          
+                        onFixComplete: runFixer,
+                        onVisualSync: syncVisualsToCode // 👈 Pass New Function
                     }
                 };
             }
             return node;
         }));
-    }, [setNodes, onSyncCode, runFixer]);
+    }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
     return (
         <div className="flex w-full h-screen bg-black overflow-hidden">

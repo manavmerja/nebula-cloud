@@ -42,8 +42,8 @@ export async function runDrafterAgent(prompt: string, currentState: any) {
         draftMessage += `\n\nStart from scratch.`;
     }
 
-    const result = await callAIModel(DRAFTER_PROMPT, draftMessage, "Agent A (Drafter)");
-    
+    const result = await callAIModel(DRAFTER_PROMPT, draftMessage, 'DRAFTER');
+
     // Debugging Log to check Edges
     if (result) {
         console.log(`🔎 DRAFTER Stats: ${result.nodes?.length || 0} Nodes, ${result.edges?.length || 0} Edges.`);

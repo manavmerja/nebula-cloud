@@ -1,6 +1,6 @@
 import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
-import { Terminal, RefreshCw, Download, DollarSign, Eye, EyeOff, Wand2 } from 'lucide-react'; // Wand2 icon added
+import { Terminal, RefreshCw, Download, DollarSign, Eye, EyeOff, Wand2, Hammer } from 'lucide-react'; // Hammer icon added for Build
 import Editor from '@monaco-editor/react';
 
 interface ResultNodeProps {
@@ -8,9 +8,10 @@ interface ResultNodeProps {
     output?: string;
     terraformCode?: string;
     summary?: string;
-    auditReport?: any[]; // 👈 NEW: Audit Report list
+    auditReport?: any[];
     onSync: (newCode: string) => void;
-    onFixComplete?: (fixResult: any) => void; // 👈 NEW: Callback for Fixer
+    onFixComplete?: (fixResult: any) => void;
+    onVisualSync?: () => Promise<void>; // 👈 Support for Visual Sync
   }
 }
 
@@ -19,8 +20,9 @@ function ResultNode({ data }: ResultNodeProps) {
   const [cost, setCost] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [fixing, setFixing] = useState(false); // 👈 State for Fix Button
+  const [fixing, setFixing] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [visualSyncing, setVisualSyncing] = useState(false); // 👈 State for Build Button
 
   // Check if there are any errors to fix
   const hasIssues = data.auditReport && data.auditReport.length > 0;
@@ -75,7 +77,6 @@ function ResultNode({ data }: ResultNodeProps) {
     
     setFixing(true);
     try {
-        // Call the Fixer Agent
         const response = await fetch('/api/fix', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -88,7 +89,6 @@ function ResultNode({ data }: ResultNodeProps) {
         const result = await response.json();
         if (result.error) throw new Error(result.error);
 
-        // Notify FlowEditor to update everything
         data.onFixComplete(result);
         alert("Issues Fixed Successfully! ✅");
 
@@ -98,6 +98,14 @@ function ResultNode({ data }: ResultNodeProps) {
     } finally {
         setFixing(false);
     }
+  };
+
+  // --- 🔄 VISUAL SYNC (BUILD) LOGIC ---
+  const handleVisualSync = async () => {
+    if (!data.onVisualSync) return;
+    setVisualSyncing(true);
+    await data.onVisualSync();
+    setVisualSyncing(false);
   };
 
   const handleSyncClick = async () => {
@@ -137,7 +145,8 @@ function ResultNode({ data }: ResultNodeProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* ✨ FIX BUTTON (Only visible if issues exist) */}
+          
+          {/* 1. ✨ FIX BUTTON (Only visible if issues exist) */}
           {hasIssues && (
             <button
               onClick={handleAutoFix}
@@ -153,18 +162,38 @@ function ResultNode({ data }: ResultNodeProps) {
             </button>
           )}
 
+          {/* 2. 🔄 BUILD CODE BUTTON (NEW: Visual -> Code) */}
+          {!hasIssues && (
+             <button
+               onClick={handleVisualSync}
+               disabled={visualSyncing || fixing}
+               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg ${
+                 visualSyncing 
+                   ? 'bg-gray-700 cursor-not-allowed' 
+                   : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-500/20'
+               }`}
+               title="Generate Code from Diagram"
+             >
+               <Hammer size={12} className={visualSyncing ? "animate-spin" : ""} />
+               {visualSyncing ? 'Building...' : 'Build Code'}
+             </button>
+          )}
+
           <div className="h-4 w-px bg-gray-700 mx-1" />
 
-          <button onClick={() => setShowRaw(!showRaw)} className="text-gray-400 hover:text-white" title="Toggle Debug View">
-            {showRaw ? <EyeOff size={14}/> : <Eye size={14}/>}
-          </button>
-          
+          {/* 3. Legacy Sync (Code -> Visual) */}
           {isDirty && !hasIssues && (
             <button onClick={handleSyncClick} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold ${syncing ? 'bg-gray-700' : 'bg-blue-600 text-white'}`}>
               <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />Sync
             </button>
           )}
 
+          {/* View Toggle */}
+          <button onClick={() => setShowRaw(!showRaw)} className="text-gray-400 hover:text-white" title="Toggle Debug View">
+            {showRaw ? <EyeOff size={14}/> : <Eye size={14}/>}
+          </button>
+
+          {/* Download */}
           <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={16} /></button>
         </div>
       </div>

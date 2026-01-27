@@ -33,5 +33,6 @@ export async function runAuditorAgent(terraformCode: string) {
     if (!terraformCode) return { auditReport: [] };
 
     const auditMessage = `AUDIT THIS TERRAFORM CODE:\n\n${terraformCode}`;
-    return await callAIModel(AUDITOR_PROMPT, auditMessage, "Agent B (Auditor)");
+    const result = await callAIModel(AUDITOR_PROMPT, terraformCode, 'AUDITOR');
+    return result;
 }
