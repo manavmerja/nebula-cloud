@@ -49,4 +49,20 @@ Load Balancing
 
 Key Rotation Strategy
 
+Smart Dependency Resolution
+
 <<<<<<<<<<<<<<<<<<<<<<------------------>>>>>>>>>>
+
+User Actions:
+
+Type Prompt -> Click Run -> Agent A (Drafter) -> Full Code Gen.
+
+Drag Node -> Click Build -> Agent C (Fixer) -> Smart Update (Diff).
+
+Edit Code -> Click Sync -> Agent C (Parser) -> Visual Update.
+
+<<<<<<<<<<<<<<<<<<<<<<------------------>>>>>>>>>>
+
+"Create a VPC with a public subnet and an EC2 instance."
+
+"Create a VPC with 2 public subnets, an Internet Gateway, and an EC2 instance in each subnet."

@@ -1,4 +1,4 @@
-// Drag and Drop ne Sambhade che 
+// Drag and Drop ne Sambhade che and track detect pan 
 
 import { useState, useCallback } from 'react';
 import {
@@ -27,6 +27,7 @@ export function useFlowState() {
     const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+    const [lastDeletedNode, setLastDeletedNode] = useState<string | null>(null); // 👈 Track Deletion
 
     // --- 1. CONNECT LOGIC ---
     const onConnect = useCallback(
@@ -48,7 +49,7 @@ export function useFlowState() {
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
-    // --- 3. DROP LOGIC (Visual Only) ---
+    // --- 3. DROP LOGIC ---
     const onDrop = useCallback(
         (event: React.DragEvent) => {
             event.preventDefault();
@@ -67,13 +68,25 @@ export function useFlowState() {
                 id: `${type}-${Date.now()}`,
                 type,
                 position,
-                data: { label: label, status: 'active' }, // Default status
+                data: { label: label, status: 'active' }, 
             };
 
             setNodes((nds) => nds.concat(newNode));
         },
         [reactFlowInstance, setNodes],
     );
+
+    // --- 4. DELETE LOGIC (NEW) 🗑️ ---
+    const onNodesDelete = useCallback((deleted: Node[]) => {
+        const cloudNodes = deleted.filter(n => n.type === 'cloudNode');
+        if (cloudNodes.length > 0) {
+            // Sirf cloud nodes ke liye warning set karein
+            setLastDeletedNode(cloudNodes[0].data.label);
+            
+            // Auto-clear warning after 3 seconds
+            setTimeout(() => setLastDeletedNode(null), 5000);
+        }
+    }, []);
 
     // --- Helper: Update Result Node ---
     const updateResultNode = useCallback((data: any) => {
@@ -92,6 +105,8 @@ export function useFlowState() {
         onConnect,
         onDragOver,
         onDrop,
+        onNodesDelete, // 👈 Export this
+        lastDeletedNode, // 👈 Export state
         setReactFlowInstance,
         updateResultNode,
         reactFlowInstance 

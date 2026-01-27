@@ -137,11 +137,7 @@ function ResultNode({ data }: ResultNodeProps) {
           <span className="text-sm font-bold text-gray-200">
             {hasIssues ? `${data.auditReport?.length} Issues Detected` : 'Infrastructure Code'}
           </span>
-          {cost && (
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border ${hasIssues ? 'bg-red-900/30 text-red-300 border-red-500/30' : 'bg-green-900/30 text-green-400 border-green-500/30'}`}>
-              <DollarSign size={10} /><span>{cost}/mo</span>
-            </div>
-          )}
+          {/* Cost badge... */}
         </div>
 
         <div className="flex items-center gap-2">
@@ -162,42 +158,39 @@ function ResultNode({ data }: ResultNodeProps) {
             </button>
           )}
 
-          {/* 2. 🔄 BUILD CODE BUTTON (NEW: Visual -> Code) */}
-          {!hasIssues && (
-             <button
-               onClick={handleVisualSync}
-               disabled={visualSyncing || fixing}
-               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg ${
-                 visualSyncing 
-                   ? 'bg-gray-700 cursor-not-allowed' 
-                   : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-500/20'
-               }`}
-               title="Generate Code from Diagram"
-             >
-               <Hammer size={12} className={visualSyncing ? "animate-spin" : ""} />
-               {visualSyncing ? 'Building...' : 'Build Code'}
-             </button>
-          )}
+          {/* 2. 🔄 BUILD CODE BUTTON (ALWAYS VISIBLE NOW) 🔨 */}
+          {/* Removed the !hasIssues check so you can sync drag & drop changes anytime */}
+           <button
+             onClick={handleVisualSync}
+             disabled={visualSyncing || fixing}
+             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-wider transition-all shadow-lg ${
+               visualSyncing 
+                 ? 'bg-gray-700 cursor-not-allowed' 
+                 : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-cyan-500/20'
+             }`}
+             title="Generate Code from Diagram"
+           >
+             <Hammer size={12} className={visualSyncing ? "animate-spin" : ""} />
+             {visualSyncing ? 'Building...' : 'Build Code'}
+           </button>
 
           <div className="h-4 w-px bg-gray-700 mx-1" />
 
-          {/* 3. Legacy Sync (Code -> Visual) */}
+          {/* ... Rest of the buttons (Sync, View, Download) ... */}
           {isDirty && !hasIssues && (
             <button onClick={handleSyncClick} disabled={syncing} className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold ${syncing ? 'bg-gray-700' : 'bg-blue-600 text-white'}`}>
               <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />Sync
             </button>
           )}
-
-          {/* View Toggle */}
+          {/* View Toggle & Download buttons... */}
           <button onClick={() => setShowRaw(!showRaw)} className="text-gray-400 hover:text-white" title="Toggle Debug View">
             {showRaw ? <EyeOff size={14}/> : <Eye size={14}/>}
           </button>
-
-          {/* Download */}
           <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={16} /></button>
         </div>
       </div>
 
+      
       <Handle type="target" position={Position.Left} className={`!w-3 !h-3 !border-0 ${hasIssues ? '!bg-red-500' : '!bg-green-500'}`} />
 
       {/* EDITOR AREA */}

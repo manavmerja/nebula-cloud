@@ -1,4 +1,4 @@
-// AI Engine ne Sambhade che like Call karawo te 
+// AI Engine ne Sambhade che like Call karawo te and Smart Sync Logic pan che 
 
 import { useState, useCallback } from 'react';
 import { Node, Edge, MarkerType, useReactFlow } from 'reactflow';
@@ -21,8 +21,9 @@ export function useNebulaEngine(
 
     // --- HELPER: Process & Layout Data ---
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
-        const processedEdges = rawEdges.map((edge: any) => ({
-            id: edge.id,
+        // 👇 FIX: Added 'index' to ensure Unique IDs
+        const processedEdges = rawEdges.map((edge: any, index: number) => ({
+            id: edge.id ? `${edge.id}-${index}` : `edge-${index}-${Date.now()}`, // Unique ID guaranteed
             source: edge.source,
             target: edge.target,
             animated: true,
@@ -33,7 +34,7 @@ export function useNebulaEngine(
 
         const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
             rawNodes,
-            processedEdges,
+            processedEdges, // Use the new unique edges
             direction
         );
 
@@ -164,16 +165,22 @@ export function useNebulaEngine(
         });
     }, [processLayout, setNodes, setEdges, updateResultNode]);
 
-    // --- 3. SYNC VISUALS (The New Feature) ---
-    // ✅ This is now INSIDE the function scope
+    // --- 3. SMART SYNC (Fixed: Updates Visuals too) ---
     const syncVisualsToCode = useCallback(async () => {
         setAiLoading(true);
-        updateResultNode({ output: "🤖 Reading Diagram & Generating Code..." });
+        updateResultNode({ output: "🤖 Analyzing Visual Changes, Fixing Issues & Updating Code..." });
 
         const currentNodes = getNodes();
         const currentEdges = getEdges();
+        
+        // 1. Get Existing Code
+        const resultNode = currentNodes.find(n => n.id === '3');
+        let existingCode = "";
+        if (resultNode?.data?.terraformCode) {
+            existingCode = resultNode.data.terraformCode;
+        }
 
-        // 1. Prepare Topology for AI
+        // 2. Prepare Topology
         const topology = {
             nodes: currentNodes
                 .filter(n => n.type === 'cloudNode')
@@ -184,7 +191,12 @@ export function useNebulaEngine(
         };
 
         if (topology.nodes.length === 0) {
-            alert("Canvas is empty! Drag some items first.");
+             updateResultNode({
+                output: "// Canvas is empty. Drag resources to start.",
+                terraformCode: "",
+                summary: "Canvas Cleared",
+                auditReport: []
+            });
             setAiLoading(false);
             return;
         }
@@ -194,11 +206,11 @@ export function useNebulaEngine(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    terraformCode: "# Code will be generated from Visual Topology", 
+                    terraformCode: existingCode || "# No existing code", 
                     auditReport: [
                         { 
                             level: "info", 
-                            message: "SYNC_REQUEST: The user has manually updated the diagram. IGNORE the input code. Generate Terraform code that PERFECTLY matches the provided nodes and edges." 
+                            message: "SYNC_REQUEST_INCREMENTAL: The user updated the diagram visually. Compare the provided TOPOLOGY_DATA with the provided TERRAFORM_CODE. Add missing resources, remove deleted ones, update connections, and FIX any security issues found in the process. Return the UPDATED nodes and edges JSON." 
                         },
                         {
                             level: "info",
@@ -211,10 +223,35 @@ export function useNebulaEngine(
             const result = await response.json();
             if (result.error) throw new Error(result.error);
 
+            // AI ne jo naye nodes/edges bheje hain (jisme red color nahi hai), unhe process karo
+            console.log("Sync Result Nodes:", result.nodes);
+
+            const rawNodes = result.nodes.map((node: any) => ({
+                id: node.id,
+                type: 'cloudNode',
+                // AI agar status 'active' bhej raha hai, to red border hat jayega
+                data: { label: node.label, status: node.data?.status || 'active' },
+                position: { x: 0, y: 0 }
+            }));
+
+            // Layout calculate karo
+            const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
+
+            // Canvas update karo (Purane UI nodes + Naye Cloud nodes)
+            setNodes(prev => [
+                ...prev.filter(n => ['1', '2', '3'].includes(n.id)),
+                ...finalNodes
+            ]);
+
+            setEdges(prev => [
+                ...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)),
+                ...layoutedEdges
+            ]);
+
             updateResultNode({
                 output: `SUMMARY:\n${result.summary}\n\nTERRAFORM CODE:\n${result.terraformCode}`,
                 terraformCode: result.terraformCode,
-                auditReport: [] 
+                auditReport: [] // Clear errors in editor
             });
 
         } catch (error: any) {
@@ -223,8 +260,7 @@ export function useNebulaEngine(
         } finally {
             setAiLoading(false);
         }
-    }, [getNodes, getEdges, updateResultNode]);
+    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges]); 
 
-    // ✅ Return all functions
     return { runArchitect, runFixer, syncVisualsToCode, aiLoading };
 }

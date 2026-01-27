@@ -3,44 +3,33 @@ import { NextResponse } from 'next/server';
 import { callAIModel, AgentType } from '../generate/agents/config';
 
 // --- 🧠 AGENT C: THE FIXER ---
+// ... imports
+
 const FIXER_PROMPT = `
 You are a Senior DevOps Engineer & Security Expert.
-Your task is to FIX the provided Terraform code based on the Audit Report warnings.
+Your task is to FIX or SYNC the provided Terraform code.
 
-### PHASE 1: CODE FIXING
-1. **Fix ONLY what is broken:** Do not add new resources unless necessary.
-2. **Security Hardening:** - Change '0.0.0.0/0' to '10.0.0.0/16' or specific SG references.
-   - Set 'publicly_accessible = false' for DBs.
-   - Set 'acl = "private"' for S3.
-3. **Cost:** Downgrade 'xlarge' -> 't3.medium'.
+### MODE: FIXING
+If audit report contains errors:
+1. Fix security risks (0.0.0.0/0 -> 10.0.0.0/16).
+2. Fix public S3 buckets.
 
-### PHASE 2: VISUALIZATION REGENERATION (CRITICAL)
-You MUST regenerate the "nodes" and "edges" JSON based on your *FIXED* code.
-
-### VISUALIZATION RULES (STRICT):
-1. **INCLUDE ALL LAYERS:** You MUST create nodes for **Subnets** and **Security Groups** if they exist in the code. Do not simplify the map.
-2. **INVENTORY CHECK:** - Code has 'aws_s3_bucket'? -> Create S3 Node.
-   - Code has 'aws_subnet'? -> Create Subnet Node.
-   - Code has 'aws_security_group'? -> Create Security Group Node.
-3. **NO ORPHAN NODES:** - Connect VPC -> Subnets -> EC2/RDS.
-   - Connect S3 to VPC (or Instance).
-   - Connect IGW to VPC.
+### MODE: SYNC / INCREMENTAL UPDATE (CRITICAL)
+If message says "SYNC_REQUEST_INCREMENTAL":
+1. **Analyze Topology:** Look at the provided "TOPOLOGY_DATA" (Nodes/Edges).
+2. **Analyze Code:** Look at the "BAD TERRAFORM CODE" (Existing State).
+3. **DIFF ACTION:**
+   - **ADD:** If a node exists in Topology but NOT in Code -> Generate resource.
+   - **REMOVE:** If a resource exists in Code but NOT in Topology -> Remove resource.
+   - **UPDATE:** If connections changed -> Update IDs/Refs.
+   - **KEEP:** Do NOT change unrelated resources (e.g. providers, variables).
 
 ### OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "Fixed S3 bucket permissions and secured Database access.",
-  "nodes": [ 
-      { "id": "vpc-1", "label": "VPC", "type": "cloudNode", "data": { "serviceType": "VPC" } },
-      { "id": "sub-1", "label": "Public Subnet", "type": "cloudNode", "data": { "serviceType": "Subnet" } },
-      { "id": "ec2-1", "label": "Web Server", "type": "cloudNode", "data": { "serviceType": "EC2" } },
-      { "id": "sg-1", "label": "Security Group", "type": "cloudNode", "data": { "serviceType": "Security Group" } }
-  ],
-  "edges": [
-      { "id": "e1", "source": "vpc-1", "target": "sub-1" },
-      { "id": "e2", "source": "sub-1", "target": "ec2-1" },
-      { "id": "e3", "source": "sg-1", "target": "ec2-1" }
-  ],
-  "terraformCode": "resource \"aws_vpc\" \"main\" { ... }"
+  "summary": "Added S3 bucket and connected to EC2.",
+  "nodes": [ ...full updated list... ],
+  "edges": [ ...full updated list... ],
+  "terraformCode": "..."
 }
 `;
 
