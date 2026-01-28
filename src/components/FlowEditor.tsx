@@ -31,6 +31,7 @@ import CloudServiceNode from './nodes/CloudServiceNode';
 import EditorToolbar from './EditorToolbar';
 import NebulaMinimap from './NebulaMinimap';
 import ContextMenu from './ContextMenu';
+import CommandPalette from './CommandPalette';
 
 // Node Types Configuration
 const nodeTypes = {
@@ -46,6 +47,9 @@ function Flow() {
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [menu, setMenu] = useState<any>(null); // Context Menu State
+
+    // 🚀 NEW: Command Palette State
+    const [isCommandOpen, setIsCommandOpen] = useState(false);
 
     // 2. Canvas Hooks (from useFlowState)
     const {
@@ -68,7 +72,7 @@ function Flow() {
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
-    const { getNodes, fitView } = useReactFlow(); // fitView needed for "View Terraform" zoom
+    const { getNodes, fitView } = useReactFlow();
     const toast = useToast();
 
     // --- EFFECTS ---
@@ -78,7 +82,7 @@ function Flow() {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    // Legacy Sync Handler (Keep for compatibility)
+    // Legacy Sync Handler
     const onSyncCode = useCallback(async (newCode: string) => {
          // console.log("Legacy Sync triggered", newCode);
     }, []);
@@ -87,7 +91,6 @@ function Flow() {
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
-                // Prevent infinite loop if functions haven't changed
                 if (
                     node.data.onSync === onSyncCode &&
                     node.data.onFixComplete === runFixer &&
@@ -140,7 +143,7 @@ function Flow() {
     // 3. Node Selection (Left Click)
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
         setSelectedNodeId(node.id); // Opens Properties Panel
-        setMenu(null); // Close Context Menu if open
+        setMenu(null); // Close Context Menu
     }, []);
 
     // 4. Canvas Click (Deselect)
@@ -185,7 +188,6 @@ function Flow() {
             duration: 800,        // Smooth animation
             padding: 0.2,
         });
-        // Optional: Select it too, just in case Properties Panel has relevant info
         setSelectedNodeId('3');
     };
 
@@ -240,8 +242,11 @@ function Flow() {
                     onClose={() => setSelectedNodeId(null)}
                 />
 
-                {/* Toolbar */}
-                <EditorToolbar onAutoLayout={triggerAutoLayout} />
+                {/* Toolbar (Connected to Command Palette) */}
+                <EditorToolbar
+                    onAutoLayout={triggerAutoLayout}
+                    onOpenCommandPalette={() => setIsCommandOpen(true)} // 👈 OPEN HANDLER
+                />
 
                 {/* Main React Flow Canvas */}
                 <div className="absolute inset-0 z-10">
@@ -265,6 +270,13 @@ function Flow() {
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
 
                         <NebulaMinimap />
+
+                        {/* 🚀 Command Palette (Controlled Component) */}
+                        <CommandPalette
+                           isOpen={isCommandOpen}
+                           onClose={() => setIsCommandOpen(false)}
+                           onToggle={() => setIsCommandOpen(prev => !prev)}
+                        />
 
                         {/* Custom Context Menu */}
                         {menu && (
