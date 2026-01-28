@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Node, Edge } from 'reactflow';
 import { useSession } from "next-auth/react";
 import { useToast } from '@/context/ToastContext';
+import { useRouter } from 'next/navigation'; // 👈 Import Router
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
 
@@ -12,21 +13,20 @@ export function useProjectStorage(
     edges: Edge[],
     setNodes: (nds: Node[]) => void,
     setEdges: (eds: Edge[]) => void,
-    setProjectName: (name: string) => void // 👈 NEW: Setter for updating header
+    setProjectName: (name: string) => void
 ) {
     const { data: session } = useSession();
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
     const toast = useToast();
+    const router = useRouter(); // 👈 Initialize Router
 
-    // --- SAVE PROJECT (Updated to accept name) ---
+    // --- SAVE PROJECT ---
     const saveProject = async (customName: string) => {
         if (!session?.user?.email) {
             toast.error("Please login to save your project! 🔒");
             return;
         }
-
-        // ❌ Removed prompt() here. We rely on the UI to pass 'customName'.
 
         setSaving(true);
         toast.info("Saving project...");
@@ -44,7 +44,7 @@ export function useProjectStorage(
 
             const payload = {
                 user_email: session.user.email,
-                name: customName, // 👈 Use the passed name
+                name: customName,
                 description: "Created via Nebula Cloud",
                 nodes,
                 edges,
@@ -59,9 +59,13 @@ export function useProjectStorage(
 
             if (!response.ok) throw new Error("Failed to save");
 
-            // Update the local state to match what we just saved
             setProjectName(customName);
             toast.success("Project Saved Successfully! 💾");
+
+            // 🚀 REDIRECT TO INTRO ON SAVE
+            setTimeout(() => {
+                router.push('/intro');
+            }, 1000); // 1s delay so user sees the success toast first
 
         } catch (error: any) {
             console.error("Save Error:", error);
@@ -81,12 +85,15 @@ export function useProjectStorage(
             const data = await response.json();
             if (data.nodes) setNodes(data.nodes);
             if (data.edges) setEdges(data.edges);
-
-            // 🆕 Update the Header Title
             if (data.name) setProjectName(data.name);
 
             console.log(`Project loaded: ${data.name}`);
             toast.success(`Project Loaded: ${data.name} 📂`);
+
+            // 🚀 REDIRECT TO INTRO ON LOAD (Optional)
+            // Note: Usually you want to STAY in the editor after loading.
+            // If you really want to show the intro animation again:
+            // router.push('/intro');
 
         } catch (error: any) {
             console.error("Load Error:", error);

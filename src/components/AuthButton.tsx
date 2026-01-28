@@ -1,46 +1,43 @@
 "use client";
+
 import { signIn, signOut, useSession } from "next-auth/react";
 import { LogOut, Github, User } from "lucide-react";
-import Image from "next/image";
+import { useState } from "react";
 
 export default function AuthButton() {
   const { data: session } = useSession();
+  const [imageError, setImageError] = useState(false);
 
-  // --- LOGGED IN STATE (Profile Pill) ---
+  // --- LOGGED IN STATE ---
   if (session) {
-    return (
-      <div className="flex items-center gap-3 pl-2 pr-1 py-1 bg-[#151921] border border-gray-800 rounded-full shadow-inner group transition-colors hover:border-gray-700">
+    const { name, image, email } = session.user || {};
+    const initial = name ? name[0].toUpperCase() : email ? email[0].toUpperCase() : "U";
 
-        {/* User Info */}
+    return (
+      <div className="flex items-center gap-3 pl-3 pr-1 py-1 bg-[#151921] border border-gray-800 rounded-full shadow-inner group transition-colors hover:border-gray-700">
+
+        {/* ... (Keep User Info & Avatar code same as before) ... */}
         <div className="hidden sm:flex flex-col text-right mr-1">
-          <span className="text-[10px] font-bold text-gray-300 leading-none">
-            {session.user?.name?.split(' ')[0]}
-          </span>
-          <span className="text-[9px] text-emerald-500 font-medium tracking-wide">
-            Online
-          </span>
+          <span className="text-[10px] font-bold text-gray-300 leading-none">{name?.split(' ')[0]}</span>
+          <div className="flex items-center justify-end gap-1 mt-0.5">
+             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse"></span>
+             <span className="text-[9px] text-emerald-500 font-medium tracking-wide leading-none">Online</span>
+          </div>
         </div>
 
-        {/* Avatar */}
-        <div className="relative h-7 w-7 rounded-full overflow-hidden border border-gray-700 group-hover:border-gray-500 transition-colors">
-            {session.user?.image ? (
-                <Image
-                    src={session.user.image}
-                    alt="Profile"
-                    fill
-                    className="object-cover"
-                />
+        <div className="relative h-7 w-7 rounded-full overflow-hidden border border-white/10 group-hover:border-white/30 transition-colors shadow-sm">
+            {!imageError && image ? (
+                <img src={image} alt="Profile" className="h-full w-full object-cover" onError={() => setImageError(true)} />
             ) : (
-                <div className="h-full w-full bg-gray-800 flex items-center justify-center">
-                    <User size={14} className="text-gray-400" />
+                <div className="h-full w-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-white leading-none">{initial}</span>
                 </div>
             )}
         </div>
 
-        {/* Logout (Icon) */}
         <button
-          onClick={() => signOut()}
-          className="h-7 w-7 flex items-center justify-center rounded-full bg-gray-800 hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
+          onClick={() => signOut({ callbackUrl: "/" })} // Redirect to Home on Logout
+          className="h-7 w-7 flex items-center justify-center rounded-full bg-gray-800 hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
           title="Logout"
         >
           <LogOut size={12} />
@@ -49,25 +46,23 @@ export default function AuthButton() {
     );
   }
 
-  // --- LOGGED OUT STATE (Action Buttons) ---
+  // --- LOGGED OUT STATE (Updated Redirects) ---
   return (
     <div className="flex gap-2">
-
-       {/* 1. GitHub (Dark Theme) */}
       <button
-        onClick={() => signIn("github")}
-        className="flex items-center gap-2 bg-[#24292e] hover:bg-[#2f363d] text-white px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-700 transition-all active:scale-[0.98] shadow-sm"
+        // 🚀 REDIRECT TO INTRO AFTER LOGIN
+        onClick={() => signIn("github", { callbackUrl: "/intro" })}
+        className="flex items-center gap-2 bg-[#24292e] hover:bg-[#2f363d] text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-700 transition-all active:scale-[0.98] shadow-sm"
       >
         <Github size={14} />
         <span className="hidden sm:inline">GitHub</span>
       </button>
 
-      {/* 2. Google (White Theme with Official Icon) */}
       <button
-        onClick={() => signIn("google")}
-        className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-800 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all active:scale-[0.98] shadow-sm border border-gray-200"
+        // 🚀 REDIRECT TO INTRO AFTER LOGIN
+        onClick={() => signIn("google", { callbackUrl: "/intro" })}
+        className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-800 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-[0.98] shadow-sm border border-gray-200"
       >
-        {/* Official Google 'G' SVG */}
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
