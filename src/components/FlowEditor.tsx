@@ -1,34 +1,35 @@
-// UI and Wiring nu kaam karse 
-
 'use client';
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
     Controls,
     MiniMap,
     Background,
-    MarkerType,
-    useReactFlow
+    useReactFlow,
+    Node // 👈 Added Node import
 } from 'reactflow';
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle } from 'lucide-react'; // Icon for warning
+import { AlertTriangle } from 'lucide-react';
 import 'reactflow/dist/style.css';
 
 // Hooks
 import { useFlowState } from '@/hooks/useFlowState';
 import { useProjectStorage } from '@/hooks/useProjectStorage';
 import { useNebulaEngine } from '@/hooks/useNebulaEngine';
-import { getLayoutedElements } from './layoutUtils';
+import { useToast } from '@/context/ToastContext';
 
 // Components
 import Header from './Header';
 import Sidebar from './Sidebar';
+import SaveModal from './modals/SaveModal';
+import PropertiesPanel from './PropertiesPanel'; // 👈 Import Panel
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
+import EditorToolbar from './EditorToolbar';
 
 const nodeTypes = {
     promptNode: PromptNode,
@@ -42,8 +43,9 @@ function Flow() {
     const {
         nodes, edges, setNodes, setEdges,
         onNodesChange, onEdgesChange, onConnect,
-        onDragOver, onDrop, onNodesDelete, lastDeletedNode, // 👈 New props
-        setReactFlowInstance, updateResultNode
+        onDragOver, onDrop, onNodesDelete, lastDeletedNode,
+        setReactFlowInstance, updateResultNode,
+        projectName, setProjectName
     } = useFlowState();
 
     // 2. AI Engine
@@ -53,42 +55,47 @@ function Flow() {
 
     // 3. Project Storage
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
-        nodes, edges, setNodes, setEdges
+        nodes, edges, setNodes, setEdges, setProjectName
     );
-    
-    // Session & Params
+
+    // 4. Utilities
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
-    const { getNodes } = useReactFlow(); 
+    const { getNodes } = useReactFlow();
+    const toast = useToast();
 
+    // 5. Local State
+    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+
+    // 🆕 SELECTION STATE: Track selected node ID
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+    // Load Project
     useEffect(() => {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    // Legacy Sync Handler
+    // Legacy Sync
     const onSyncCode = useCallback(async (newCode: string) => {
-         // ... (Keep existing legacy sync logic if you want, or replace)
-         // For now, let's keep it simple to save space.
-         // Assume existing logic is here.
-         console.log("Legacy Sync triggered", newCode);
+         // console.log("Legacy Sync triggered", newCode);
     }, []);
 
-    // 6. Wire Handlers
+    // Result Node Wiring
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
                 if (
-                    node.data.onSync === onSyncCode && 
+                    node.data.onSync === onSyncCode &&
                     node.data.onFixComplete === runFixer &&
                     node.data.onVisualSync === syncVisualsToCode
                 ) return node;
-                
+
                 return {
                     ...node,
                     data: {
                         ...node.data,
-                        onSync: onSyncCode,          
+                        onSync: onSyncCode,
                         onFixComplete: runFixer,
                         onVisualSync: syncVisualsToCode
                     }
@@ -98,20 +105,64 @@ function Flow() {
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
-    // 🚀 THE FIX: Get latest prompt text directly from nodes state
+    // Run Handler
     const handleRunArchitect = () => {
-        // Use 'getNodes' to fetch FRESH state directly from React Flow store
-        // This solves the issue of stale prompt text
-        const currentNodes = getNodes(); 
+        const currentNodes = getNodes();
         const inputNode = currentNodes.find(n => n.id === '1');
         const promptText = inputNode?.data?.text || "";
+
+        if (!promptText) {
+            toast.error("Please enter a prompt first!");
+            return;
+        }
         runArchitect(promptText);
+    };
+
+    // Save Handlers
+    const handleSaveClick = () => {
+        if (!session) {
+            toast.error("Please login to save your project! 🔒");
+            return;
+        }
+        setIsSaveModalOpen(true);
+    };
+
+    const handleConfirmSave = (name: string) => {
+        saveProject(name);
+        setIsSaveModalOpen(false);
+    };
+
+    // 🆕 SELECTION HANDLERS
+    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+        setSelectedNodeId(node.id); // Select clicked node
+    }, []);
+
+    const onPaneClick = useCallback(() => {
+        setSelectedNodeId(null); // Deselect when clicking empty canvas
+    }, []);
+
+    // 🆕 DERIVED STATE: Find the actual node object
+    const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+
+    const handleAutoLayout = () => {
+        // Call your layout utility here using current nodes/edges
+        // For now, if you don't have it exposed easily, you can leave this prop empty
+        // or refactor useNebulaEngine to return 'triggerLayout'.
+        console.log("Triggering Auto Layout...");
     };
 
     return (
         <div className="flex w-full h-screen bg-black overflow-hidden relative">
-            
-            {/* ⚠️ DELETE WARNING TOAST */}
+
+            {/* Modal */}
+            <SaveModal
+                isOpen={isSaveModalOpen}
+                onClose={() => setIsSaveModalOpen(false)}
+                onConfirm={handleConfirmSave}
+                currentName={projectName}
+            />
+
+            {/* Warning Toast */}
             {lastDeletedNode && (
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
                     <div className="bg-red-900/90 text-white px-4 py-2 rounded-lg border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center gap-3 backdrop-blur-md">
@@ -127,33 +178,46 @@ function Flow() {
             <Sidebar />
             <div className="flex-1 relative h-full">
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
-                
+
                 <div className="relative z-20">
                     <Header
                         session={session}
-                        onSave={saveProject}
-                        onRun={handleRunArchitect} // 👈 Using fixed handler
+                        title={projectName}
+                        setTitle={setProjectName}
+                        onSave={handleSaveClick}
+                        onRun={handleRunArchitect}
                         saving={saving}
                         loading={aiLoading || projectLoading}
                     />
                 </div>
-                
+
+                {/* 🆕 PROPERTIES PANEL (Z-Index 30 ensures it floats above canvas) */}
+                <PropertiesPanel
+                    selectedNode={selectedNode}
+                    onClose={() => setSelectedNodeId(null)}
+                />
+
+                {/* ✅ NEW: Custom Toolbar (Replaces standard Controls) */}
+                <EditorToolbar onAutoLayout={handleAutoLayout} />
+
                 <div className="absolute inset-0 z-10">
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
-                        onNodesDelete={onNodesDelete} // 👈 Delete Handler
+                        onNodesDelete={onNodesDelete}
                         onConnect={onConnect}
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
+                        onNodeClick={onNodeClick} // 👈 Added Selection Logic
+                        onPaneClick={onPaneClick} // 👈 Added Deselection Logic
                         nodeTypes={nodeTypes}
                         fitView
                         style={{ background: 'transparent' }}
                     >
-                        <Controls className="!bg-black/50 !border-white/10 !fill-white shadow-2xl" />
+                        
                         <MiniMap
                             nodeColor={(n: any) => {
                                 if (n.type === 'promptNode') return '#06b6d4';

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react'; // ✅ Import useState directly
+import React, { useState } from 'react';
 import { Save, LayoutDashboard, ChevronRight } from 'lucide-react';
 import Link from "next/link";
 import AuthButton from "@/components/AuthButton";
@@ -14,18 +14,30 @@ interface HeaderProps {
     onRun: () => void;
     saving: boolean;
     loading: boolean;
+    // 🟢 NEW: Receive state from Parent (FlowEditor)
+    title: string;
+    setTitle: (newTitle: string) => void;
 }
 
-export default function Header({ session, onSave, onRun, saving, loading }: HeaderProps) {
-    // ✅ FIX: Hooks are now INSIDE the component function
+export default function Header({
+    session,
+    onSave,
+    onRun,
+    saving,
+    loading,
+    title,     // 👈 Destructure
+    setTitle   // 👈 Destructure
+}: HeaderProps) {
+    // We only keep "isEditing" local because it's just UI state.
+    // The actual data (title) now lives in FlowEditor.
     const [isEditing, setIsEditing] = useState(false);
-    const [title, setTitle] = useState("Untitled Architecture");
 
     return (
         <header className="h-16 w-full flex items-center justify-between px-6 border-b border-gray-800 bg-[#0F1117] sticky top-0 z-40">
 
             {/* --- LEFT: Context & Breadcrumbs --- */}
             <div className="flex items-center gap-4">
+                {/* Logo or Brand */}
                 <div className="hidden md:flex items-center gap-2 text-sm text-gray-500">
                     <span className="hover:text-gray-300 cursor-pointer transition-colors">Nebula Cloud</span>
                     <ChevronRight size={14} className="text-gray-700" />
@@ -34,8 +46,8 @@ export default function Header({ session, onSave, onRun, saving, loading }: Head
                     {isEditing ? (
                         <input
                             autoFocus
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
+                            value={title} // 🟢 Uses Prop
+                            onChange={(e) => setTitle(e.target.value)} // 🟢 Updates Parent
                             onBlur={() => setIsEditing(false)}
                             onKeyDown={(e) => e.key === 'Enter' && setIsEditing(false)}
                             className="bg-[#151921] text-gray-200 font-medium focus:outline-none focus:ring-1 focus:ring-cyan-500 rounded px-2 py-0.5 -ml-2 w-48 transition-all"
@@ -47,7 +59,7 @@ export default function Header({ session, onSave, onRun, saving, loading }: Head
                             title="Click to rename"
                         >
                             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
-                            {title}
+                            {title} {/* 🟢 Uses Prop */}
                         </span>
                     )}
                 </div>
@@ -56,7 +68,7 @@ export default function Header({ session, onSave, onRun, saving, loading }: Head
             {/* --- RIGHT: Professional Action Bar --- */}
             <div className="flex items-center gap-3">
 
-                {/* 1. Standard Action Group */}
+                {/* 1. Save Button */}
                 <div className="flex items-center bg-[#0A0C10] p-1 rounded-lg border border-gray-800/50">
                     <Button
                         variant="ghost"
@@ -70,7 +82,7 @@ export default function Header({ session, onSave, onRun, saving, loading }: Head
                     </Button>
                 </div>
 
-                {/* 2. THE NEW MAGIC RUN BUTTON */}
+                {/* 2. Run Architect Button */}
                 <RunArchitectButton onRun={onRun} loading={loading} />
 
                 <div className="h-6 w-px bg-gray-800 mx-2" />

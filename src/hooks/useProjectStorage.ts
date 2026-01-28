@@ -3,34 +3,38 @@
 import { useState } from 'react';
 import { Node, Edge } from 'reactflow';
 import { useSession } from "next-auth/react";
+import { useToast } from '@/context/ToastContext';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
 
 export function useProjectStorage(
-    nodes: Node[], 
-    edges: Edge[], 
-    setNodes: (nds: Node[]) => void, 
-    setEdges: (eds: Edge[]) => void
+    nodes: Node[],
+    edges: Edge[],
+    setNodes: (nds: Node[]) => void,
+    setEdges: (eds: Edge[]) => void,
+    setProjectName: (name: string) => void // 👈 NEW: Setter for updating header
 ) {
     const { data: session } = useSession();
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(false);
+    const toast = useToast();
 
-    // --- SAVE PROJECT ---
-    const saveProject = async () => {
+    // --- SAVE PROJECT (Updated to accept name) ---
+    const saveProject = async (customName: string) => {
         if (!session?.user?.email) {
-            alert("Please login to save your project! 🔒");
+            toast.error("Please login to save your project! 🔒");
             return;
         }
 
-        const projectName = prompt("Enter project name:", "My Awesome Cloud");
-        if (!projectName) return;
+        // ❌ Removed prompt() here. We rely on the UI to pass 'customName'.
 
         setSaving(true);
+        toast.info("Saving project...");
+
         try {
             const resultNode = nodes.find(n => n.id === '3');
             let terraformCode = "";
-            
+
             if (resultNode?.data?.terraformCode) {
                 terraformCode = resultNode.data.terraformCode;
             } else if (resultNode?.data?.output) {
@@ -40,7 +44,7 @@ export function useProjectStorage(
 
             const payload = {
                 user_email: session.user.email,
-                name: projectName,
+                name: customName, // 👈 Use the passed name
                 description: "Created via Nebula Cloud",
                 nodes,
                 edges,
@@ -54,11 +58,14 @@ export function useProjectStorage(
             });
 
             if (!response.ok) throw new Error("Failed to save");
-            alert("Project Saved Successfully! 💾");
+
+            // Update the local state to match what we just saved
+            setProjectName(customName);
+            toast.success("Project Saved Successfully! 💾");
 
         } catch (error: any) {
             console.error("Save Error:", error);
-            alert(`Save Failed: ${error.message}`);
+            toast.error(`Save Failed: ${error.message}`);
         } finally {
             setSaving(false);
         }
@@ -75,9 +82,15 @@ export function useProjectStorage(
             if (data.nodes) setNodes(data.nodes);
             if (data.edges) setEdges(data.edges);
 
+            // 🆕 Update the Header Title
+            if (data.name) setProjectName(data.name);
+
             console.log(`Project loaded: ${data.name}`);
-        } catch (error) {
+            toast.success(`Project Loaded: ${data.name} 📂`);
+
+        } catch (error: any) {
             console.error("Load Error:", error);
+            toast.error(`Load Failed: ${error.message}`);
         } finally {
             setLoading(false);
         }

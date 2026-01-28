@@ -1,4 +1,4 @@
-// Drag and Drop ne Sambhade che and track detect pan 
+// Drag and Drop ne Sambhade che and track detect pan
 
 import { useState, useCallback } from 'react';
 import {
@@ -8,7 +8,11 @@ import {
     Connection,
     Edge,
     Node,
-    MarkerType
+    MarkerType,
+    OnNodesChange,
+    OnEdgesChange,
+    applyNodeChanges,
+    applyEdgeChanges
 } from 'reactflow';
 
 // Initial Data
@@ -24,17 +28,21 @@ const initialEdges: Edge[] = [
 ];
 
 export function useFlowState() {
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+    // 1. Core Canvas State
+    const [nodes, setNodes] = useNodesState(initialNodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
     const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-    const [lastDeletedNode, setLastDeletedNode] = useState<string | null>(null); // 👈 Track Deletion
 
-    // --- 1. CONNECT LOGIC ---
+    // 2. Project Meta State (New)
+    const [projectName, setProjectName] = useState("Untitled Architecture");
+    const [lastDeletedNode, setLastDeletedNode] = useState<string | null>(null);
+
+    // --- CONNECT LOGIC ---
     const onConnect = useCallback(
         (params: Edge | Connection) => {
-            setEdges((eds) => addEdge({ 
-                ...params, 
-                animated: true, 
+            setEdges((eds) => addEdge({
+                ...params,
+                animated: true,
                 style: { stroke: '#94a3b8', strokeWidth: 2 },
                 type: 'smoothstep',
                 markerEnd: { type: MarkerType.ArrowClosed }
@@ -43,13 +51,13 @@ export function useFlowState() {
         [setEdges],
     );
 
-    // --- 2. DRAG OVER LOGIC ---
+    // --- DRAG OVER LOGIC ---
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
     }, []);
 
-    // --- 3. DROP LOGIC ---
+    // --- DROP LOGIC ---
     const onDrop = useCallback(
         (event: React.DragEvent) => {
             event.preventDefault();
@@ -68,7 +76,7 @@ export function useFlowState() {
                 id: `${type}-${Date.now()}`,
                 type,
                 position,
-                data: { label: label, status: 'active' }, 
+                data: { label: label, status: 'active' },
             };
 
             setNodes((nds) => nds.concat(newNode));
@@ -76,39 +84,42 @@ export function useFlowState() {
         [reactFlowInstance, setNodes],
     );
 
-    // --- 4. DELETE LOGIC (NEW) 🗑️ ---
+    // --- NODE CHANGES (Standard) ---
+    const onNodesChange: OnNodesChange = useCallback((changes) => {
+        setNodes((nds) => applyNodeChanges(changes, nds));
+    }, [setNodes]);
+
+    // --- DELETE LOGIC ---
     const onNodesDelete = useCallback((deleted: Node[]) => {
         const cloudNodes = deleted.filter(n => n.type === 'cloudNode');
         if (cloudNodes.length > 0) {
-            // Sirf cloud nodes ke liye warning set karein
+            // Set warning state for UI
             setLastDeletedNode(cloudNodes[0].data.label);
-            
-            // Auto-clear warning after 3 seconds
+
+            // Auto-clear warning after 5 seconds
             setTimeout(() => setLastDeletedNode(null), 5000);
         }
     }, []);
 
-    // --- Helper: Update Result Node ---
+    // --- HELPER: Update Result Node ---
     const updateResultNode = useCallback((data: any) => {
-        setNodes((nds) => nds.map((n) => 
+        setNodes((nds) => nds.map((n) =>
             n.id === '3' ? { ...n, data: { ...n.data, ...data } } : n
         ));
     }, [setNodes]);
 
     return {
-        nodes,
-        edges,
-        setNodes,
-        setEdges,
+        nodes, setNodes,
+        edges, setEdges,
         onNodesChange,
         onEdgesChange,
         onConnect,
         onDragOver,
         onDrop,
-        onNodesDelete, // 👈 Export this
-        lastDeletedNode, // 👈 Export state
-        setReactFlowInstance,
+        onNodesDelete,
+        lastDeletedNode,
+        reactFlowInstance, setReactFlowInstance,
         updateResultNode,
-        reactFlowInstance 
+        projectName, setProjectName // 👈 Exporting for Header & Save Logic
     };
 }

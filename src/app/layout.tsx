@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import SmoothScroll from "@/components/SmoothScroll";
+import { ToastProvider } from '@/context/ToastContext';
+import "@monaco-editor/react"; // Ensure the react wrapper is installed
+import "monaco-editor/min/vs/editor/editor.main.css"; // Import styles globally
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +33,7 @@ export default function RootLayout({
         <link
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600&display=swap"
     rel="stylesheet"
+    crossOrigin="anonymous"
   />
       </head>
       <body
@@ -37,7 +41,11 @@ export default function RootLayout({
       >
 
         <Providers>
-          <SmoothScroll>{children}</SmoothScroll>
+          <SmoothScroll>
+            <ToastProvider>
+            {children}
+            </ToastProvider>
+            </SmoothScroll>
         </Providers>
       </body>
     </html>
