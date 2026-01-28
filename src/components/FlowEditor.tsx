@@ -30,6 +30,7 @@ import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
 import EditorToolbar from './EditorToolbar';
+import NebulaMinimap from './NebulaMinimap';
 
 const nodeTypes = {
     promptNode: PromptNode,
@@ -218,16 +219,9 @@ function Flow() {
                         style={{ background: 'transparent' }}
                     >
 
-                        <MiniMap
-                            nodeColor={(n: any) => {
-                                if (n.type === 'promptNode') return '#06b6d4';
-                                if (n.type === 'aiNode') return '#8b5cf6';
-                                if (n.type === 'resultNode') return '#22c55e';
-                                return '#3b82f6';
-                            }}
-                            style={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.05)' }}
-                            maskColor="rgba(0,0,0, 0.8)"
-                        />
+
+                        <NebulaMinimap />
+                        
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
                     </ReactFlow>
                 </div>

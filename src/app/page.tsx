@@ -11,13 +11,19 @@ export default function Home() {
 
   // 2. Check Local Storage on Mount
   useEffect(() => {
-    const hasSeenIntro = localStorage.getItem('hasSeenIntro');
+    try {
+      const hasSeenIntro = localStorage.getItem('hasSeenIntro');
 
-    if (!hasSeenIntro) {
-      setShowIntro(true); // Show intro if NOT seen yet
+      if (!hasSeenIntro) {
+        setShowIntro(true); // Show intro if NOT seen yet
+      }
+    } catch (error) {
+      // Handle cases where localStorage is unavailable (SSR, private browsing, etc.)
+      console.warn('localStorage access failed, showing intro:', error);
+      setShowIntro(true); // Treat as "not seen"
+    } finally {
+      setIsChecking(false); // Check complete
     }
-
-    setIsChecking(false); // Check complete
   }, []);
 
   // 3. Handler to dismiss intro and save flag
