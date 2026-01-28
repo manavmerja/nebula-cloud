@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { X, CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 
 // --- TYPES ---
-type ToastType = 'success' | 'error' | 'warning' | 'info';
+type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 interface Toast {
   id: string;
@@ -13,92 +13,93 @@ interface Toast {
 }
 
 interface ToastContextType {
-  addToast: (message: string, type: ToastType) => void;
-  removeToast: (id: string) => void;
-  success: (message: string) => void;
-  error: (message: string) => void;
-  warning: (message: string) => void;
-  info: (message: string) => void;
+  success: (msg: string) => void;
+  error: (msg: string) => void;
+  info: (msg: string) => void;
+  warning: (msg: string) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-// --- TOAST ITEM COMPONENT (The Visual Card) ---
-const ToastItem = ({ toast, onClose }: { toast: Toast; onClose: () => void }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 4000); // Auto dismiss after 4 seconds
-    return () => clearTimeout(timer);
-  }, [onClose]);
-
-  // Styles based on type
-  const styles = {
-    success: 'border-green-500/50 bg-green-950/90 text-green-200 shadow-[0_0_15px_rgba(34,197,94,0.2)]',
-    error: 'border-red-500/50 bg-red-950/90 text-red-200 shadow-[0_0_15px_rgba(239,68,68,0.2)]',
-    warning: 'border-orange-500/50 bg-orange-950/90 text-orange-200 shadow-[0_0_15px_rgba(249,115,22,0.2)]',
-    info: 'border-blue-500/50 bg-blue-950/90 text-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.2)]',
-  };
-
-  const icons = {
-    success: <CheckCircle size={18} className="text-green-400" />,
-    error: <AlertCircle size={18} className="text-red-400" />,
-    warning: <AlertTriangle size={18} className="text-orange-400" />,
-    info: <Info size={18} className="text-blue-400" />,
-  };
-
-  return (
-    <div className={`flex items-start gap-3 p-4 rounded-lg border backdrop-blur-md mb-3 transition-all animate-in slide-in-from-right-full duration-300 w-80 ${styles[toast.type]}`}>
-      <div className="mt-0.5">{icons[toast.type]}</div>
-      <div className="flex-1 text-sm font-medium">{toast.message}</div>
-      <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-        <X size={16} />
-      </button>
-    </div>
-  );
-};
-
-// --- PROVIDER COMPONENT ---
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
-  const addToast = useCallback((message: string, type: ToastType) => {
-    const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
-  }, []);
-
-  // Helper functions for easier usage
-  const success = useCallback((msg: string) => addToast(msg, 'success'), [addToast]);
-  const error = useCallback((msg: string) => addToast(msg, 'error'), [addToast]);
-  const warning = useCallback((msg: string) => addToast(msg, 'warning'), [addToast]);
-  const info = useCallback((msg: string) => addToast(msg, 'info'), [addToast]);
-
-  return (
-    <ToastContext.Provider value={{ addToast, removeToast, success, error, warning, info }}>
-      {children}
-
-      {/* Toast Container (Fixed Position) */}
-      <div className="fixed bottom-5 right-5 z-[9999] flex flex-col items-end pointer-events-none">
-        {/* Enable pointer events only for the toasts themselves */}
-        <div className="pointer-events-auto">
-          {toasts.map((toast) => (
-            <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
-          ))}
-        </div>
-      </div>
-    </ToastContext.Provider>
-  );
-}
-
-// --- CUSTOM HOOK ---
+// --- HOOK ---
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
+}
+
+// --- PROVIDER COMPONENT ---
+export function ToastProvider({ children }: { children: ReactNode }) {
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Helper to add toast
+  const addToast = useCallback((message: string, type: ToastType) => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts((prev) => [...prev, { id, message, type }]);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const value = {
+    success: (msg: string) => addToast(msg, 'success'),
+    error: (msg: string) => addToast(msg, 'error'),
+    info: (msg: string) => addToast(msg, 'info'),
+    warning: (msg: string) => addToast(msg, 'warning'),
+  };
+
+  return (
+    <ToastContext.Provider value={value}>
+      {children}
+
+      {/* --- TOAST CONTAINER (Fixed Overlay) --- */}
+      <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto flex items-start gap-3 min-w-[300px] max-w-md p-4 rounded-xl shadow-2xl backdrop-blur-md animate-in slide-in-from-right-full fade-in duration-300 border border-white/10"
+            style={{
+              background:
+                toast.type === 'success' ? 'rgba(6, 78, 59, 0.9)' :
+                toast.type === 'error' ? 'rgba(127, 29, 29, 0.9)' :
+                'rgba(23, 23, 23, 0.95)',
+              borderColor:
+                toast.type === 'success' ? 'rgba(52, 211, 153, 0.2)' :
+                toast.type === 'error' ? 'rgba(248, 113, 113, 0.2)' :
+                'rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            {/* Icon */}
+            <div className="mt-0.5">
+              {toast.type === 'success' && <CheckCircle size={18} className="text-emerald-400" />}
+              {toast.type === 'error' && <AlertCircle size={18} className="text-red-400" />}
+              {toast.type === 'info' && <Info size={18} className="text-blue-400" />}
+              {toast.type === 'warning' && <AlertTriangle size={18} className="text-yellow-400" />}
+            </div>
+
+            {/* Message */}
+            <p className="text-sm font-medium text-white flex-1 leading-snug">
+              {toast.message}
+            </p>
+
+            {/* Close Button */}
+            <button
+              onClick={() => removeToast(toast.id)}
+              className="text-white/40 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
 }

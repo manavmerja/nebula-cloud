@@ -41,11 +41,11 @@ export default function RootLayout({
       >
 
         <Providers>
-          <SmoothScroll>
             <ToastProvider>
+          <SmoothScroll>
             {children}
+          </SmoothScroll>
             </ToastProvider>
-            </SmoothScroll>
         </Providers>
       </body>
     </html>
