@@ -3,6 +3,20 @@ import { Node, Edge, MarkerType, useReactFlow } from 'reactflow';
 import { getLayoutedElements } from '../components/layoutUtils';
 import { useToast } from '@/context/ToastContext'; // 🔔 Import Toast
 
+// 👇👇👇 1. LABEL FIX HELPER (RESTORED) 👇👇👇
+const extractLabel = (node: any) => {
+    // 1. Direct Label
+    if (node.label) return node.label;
+    // 2. Data Label
+    if (node.data?.label) return node.data.label;
+    // 3. Service Type (fallback)
+    if (node.data?.serviceType) return node.data.serviceType;
+    // 4. Name (fallback)
+    if (node.name) return node.name;
+    // 5. Final Default
+    return "Resource";
+};
+
 export function useNebulaEngine(
     setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
     setEdges: React.Dispatch<React.SetStateAction<Edge[]>>,
@@ -12,7 +26,7 @@ export function useNebulaEngine(
     const { getNodes, getEdges } = useReactFlow();
     const toast = useToast();
 
-    // --- HELPER: Process & Layout Data (Used for NEW generations & Auto-Layout) ---
+    // --- HELPER: Process & Layout Data ---
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
         const processedEdges = rawEdges.map((edge: any, index: number) => ({
             id: edge.id ? `${edge.id}-${index}` : `edge-${index}-${Date.now()}`,
@@ -30,7 +44,6 @@ export function useNebulaEngine(
             direction
         );
 
-        // Shift layout down to avoid overlapping the prompt/result nodes
         const Y_OFFSET = 450;
         const X_OFFSET = 100;
 
@@ -69,7 +82,6 @@ export function useNebulaEngine(
             const data = await response.json();
             if (data.error) throw new Error(data.error);
 
-            // Filter out the static nodes (1, 2, 3)
             const staticNodeIds = ['1', '2', '3'];
             const newNodes = data.nodes
                 .filter((n: any) => !staticNodeIds.includes(n.id))
@@ -77,7 +89,7 @@ export function useNebulaEngine(
                     id: n.id,
                     type: 'cloudNode',
                     data: {
-                        label: n.label || n.data?.label || "Resource",
+                        label: extractLabel(n), // 👈 Using Helper
                         status: 'active'
                     },
                     position: { x: 0, y: 0 }
@@ -86,10 +98,8 @@ export function useNebulaEngine(
             const staticEdgeIds = ['e1-2', 'e2-3'];
             const newEdges = data.edges ? data.edges.filter((e: any) => !staticEdgeIds.includes(e.id)) : [];
 
-            // Apply Layout for NEW architecture
             const { finalNodes, layoutedEdges } = processLayout(newNodes, newEdges, 'TB');
 
-            // Apply Audit Results (Red Borders)
             const auditedNodes = finalNodes.map(node => {
                 const lowerLabel = node.data.label.toLowerCase();
                 if (data.auditReport) {
@@ -137,14 +147,14 @@ export function useNebulaEngine(
     }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode, toast]);
 
 
-    // --- 2. AGENT C: FIXER (✅ UPDATED: Robust Edge Preservation) ---
+    // --- 2. AGENT C: FIXER (Robust Labeling Restored) ---
     const runFixer = useCallback(async (fixResult: any) => {
         console.log("Applying Fixes...", fixResult);
         toast.info("Applying Security Fixes...");
 
         const currentNodes = getNodes();
 
-        // 1. Process Nodes (Merge & Preserve Positions)
+        // 1. Process Nodes
         const finalNodes = fixResult.nodes.map((fixedNode: any) => {
             const existingNode = currentNodes.find(n => n.id === fixedNode.id);
             const position = existingNode ? existingNode.position : { x: 50, y: 50 };
@@ -153,20 +163,20 @@ export function useNebulaEngine(
                 id: fixedNode.id,
                 type: 'cloudNode',
                 data: {
-                    label: fixedNode.data?.label || fixedNode.label || "Resource",
+                    label: extractLabel(fixedNode), // 👈 Using Helper
                     status: 'active'
                 },
                 position: position
             };
         });
 
-        // 2. Validate IDs to prevent ghost edges
+        // 2. Validate IDs
         const validNodeIds = new Set([
             '1', '2', '3',
             ...finalNodes.map((n: any) => n.id)
         ]);
 
-        // 3. Process New Dynamic Edges
+        // 3. Process Edges
         const newEdges = (fixResult.edges || [])
             .filter((e: any) => validNodeIds.has(e.source) && validNodeIds.has(e.target))
             .map((e: any, i: number) => ({
@@ -186,13 +196,10 @@ export function useNebulaEngine(
         ]);
 
         setEdges(prev => {
-            // 🛡️ ROBUST FIX: Keep edges connected to Static Nodes (1, 2, 3)
-            // This works even if the Edge ID has changed
             const staticEdges = prev.filter(e =>
                 ['1', '2', '3'].includes(e.source) ||
                 ['1', '2', '3'].includes(e.target)
             );
-
             return [...staticEdges, ...newEdges];
         });
 
@@ -204,7 +211,9 @@ export function useNebulaEngine(
 
         toast.success("Infrastructure Fixed & Secured! 🛡️");
     }, [getNodes, setNodes, setEdges, updateResultNode, toast]);
-    // --- 3. SMART SYNC (Visuals -> Code) ---
+
+
+    // --- 3. SMART SYNC (FIXED: Empty Code Bug & Label Issue) ---
     const syncVisualsToCode = useCallback(async () => {
         setAiLoading(true);
         toast.info("Syncing Visual Changes...");
@@ -212,6 +221,19 @@ export function useNebulaEngine(
 
         const currentNodes = getNodes();
         const currentEdges = getEdges();
+
+        // 1. Get Existing Code (Node 3)
+        const resultNode = currentNodes.find(n => n.id === '3');
+        let existingCode = "";
+        
+        // Handle different data structures safely
+        if (resultNode?.data?.terraformCode) {
+            existingCode = resultNode.data.terraformCode;
+        } else if (resultNode?.data?.output && !resultNode.data.output.startsWith('//')) {
+             // Fallback: If output has code but not in terraformCode prop
+             const parts = resultNode.data.output.split('TERRAFORM CODE:');
+             if(parts.length > 1) existingCode = parts[1];
+        }
 
         const topology = {
             nodes: currentNodes
@@ -222,12 +244,24 @@ export function useNebulaEngine(
                 .map(e => ({ source: e.source, target: e.target }))
         };
 
+        if (topology.nodes.length === 0) {
+             updateResultNode({
+                output: "// Canvas is empty. Drag resources to start.",
+                terraformCode: "",
+                summary: "Canvas Cleared",
+                auditReport: []
+            });
+            setAiLoading(false);
+            return;
+        }
+
         try {
             const response = await fetch('/api/fix', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    terraformCode: "",
+                    // 👇 FIX 1: Send placeholder if code is empty to pass API validation
+                    terraformCode: existingCode || "# No existing code", 
                     auditReport: [
                         {
                             level: "info",
@@ -244,7 +278,10 @@ export function useNebulaEngine(
             const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
-                data: { label: node.label, status: 'active' },
+                data: { 
+                    label: extractLabel(node), // 👈 FIX 2: Use Helper
+                    status: 'active' 
+                },
                 position: { x: 0, y: 0 }
             }));
 
@@ -277,13 +314,11 @@ export function useNebulaEngine(
         }
     }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges, toast]);
 
-    // --- 4. 🧹 MANUAL AUTO-LAYOUT (For the Toolbar Button) ---
+    // --- 4. 🧹 MANUAL AUTO-LAYOUT ---
     const triggerAutoLayout = useCallback(() => {
         const currentNodes = getNodes();
         const currentEdges = getEdges();
 
-        // 1. Separate Static Nodes (Prompt, AI, Result) from Cloud Resources
-        // We don't want to move your header nodes!
         const staticNodes = currentNodes.filter(n => ['1', '2', '3'].includes(n.id));
         const cloudNodes = currentNodes.filter(n => !['1', '2', '3'].includes(n.id));
 
@@ -294,15 +329,11 @@ export function useNebulaEngine(
 
         toast.info("Arranging Layout...");
 
-        // 2. Run the Layout Engine on just the Cloud Nodes
-        // 'TB' = Top to Bottom direction
         const { finalNodes, layoutedEdges } = processLayout(cloudNodes, currentEdges, 'TB');
 
-        // 3. Update Canvas
         setNodes([...staticNodes, ...finalNodes]);
         setEdges(layoutedEdges);
 
-        // Short delay to let React Flow render, then show success
         setTimeout(() => toast.success("Layout Organized! ✨"), 500);
 
     }, [getNodes, getEdges, processLayout, setNodes, setEdges, toast]);
