@@ -49,7 +49,7 @@ function Flow() {
     } = useFlowState();
 
     // 2. AI Engine
-    const { runArchitect, runFixer, syncVisualsToCode, aiLoading } = useNebulaEngine(
+    const { runArchitect, runFixer, syncVisualsToCode, triggerAutoLayout, aiLoading } = useNebulaEngine(
         setNodes, setEdges, updateResultNode
     );
 
@@ -199,7 +199,7 @@ function Flow() {
 
                 {/* ✅ NEW: Custom Toolbar (Replaces standard Controls) */}
                 <EditorToolbar onAutoLayout={handleAutoLayout} />
-
+                <EditorToolbar onAutoLayout={triggerAutoLayout} />
                 <div className="absolute inset-0 z-10">
                     <ReactFlow
                         nodes={nodes}
@@ -217,7 +217,7 @@ function Flow() {
                         fitView
                         style={{ background: 'transparent' }}
                     >
-                        
+
                         <MiniMap
                             nodeColor={(n: any) => {
                                 if (n.type === 'promptNode') return '#06b6d4';

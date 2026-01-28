@@ -1,8 +1,7 @@
-// AI Engine ne Sambhade che like Call karawo te and Smart Sync Logic pan che
-
 import { useState, useCallback } from 'react';
 import { Node, Edge, MarkerType, useReactFlow } from 'reactflow';
 import { getLayoutedElements } from '../components/layoutUtils';
+import { useToast } from '@/context/ToastContext'; // 🔔 Import Toast
 
 export function useNebulaEngine(
     setNodes: React.Dispatch<React.SetStateAction<Node[]>>,
@@ -11,22 +10,9 @@ export function useNebulaEngine(
 ) {
     const [aiLoading, setAiLoading] = useState(false);
     const { getNodes, getEdges } = useReactFlow();
+    const toast = useToast();
 
-    const extractLabel = (node: any) => {
-        // 1. Direct Label
-        if (node.label) return node.label;
-        // 2. Data Label
-        if (node.data?.label) return node.data.label;
-        // 3. Service Type (fallback)
-        if (node.data?.serviceType) return node.data.serviceType;
-        // 4. Name (fallback)
-        if (node.name) return node.name;
-        // 5. Final Default
-        return "Resource";
-    };
-
-    // --- HELPER: Process & Layout Data ---
-    // --- HELPER: Process & Layout Data (Used for NEW generations only) ---
+    // --- HELPER: Process & Layout Data (Used for NEW generations & Auto-Layout) ---
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
         const processedEdges = rawEdges.map((edge: any, index: number) => ({
             id: edge.id ? `${edge.id}-${index}` : `edge-${index}-${Date.now()}`,
@@ -59,11 +45,12 @@ export function useNebulaEngine(
     // --- 1. AGENT A & B: GENERATE + AUDIT ---
     const runArchitect = useCallback(async (promptText: string) => {
         if (!promptText) {
-            alert("Please enter a prompt first!");
+            toast.error("Please enter a prompt first!");
             return;
         }
 
         setAiLoading(true);
+        toast.info("Architect is thinking...");
         updateResultNode({ output: "Generating Architecture & Auditing Security..." });
 
         const currentNodes = getNodes();
@@ -138,37 +125,28 @@ export function useNebulaEngine(
                 auditReport: data.auditReport
             });
 
+            toast.success("Architecture Generated!");
+
         } catch (error: any) {
             console.error(error);
             updateResultNode({ output: `Error: ${error.message}` });
+            toast.error(`Generation Failed: ${error.message}`);
         } finally {
             setAiLoading(false);
         }
-    }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode]);
+    }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode, toast]);
 
-    // --- 2. AGENT C: FIXER (✅ FIXED: "NO SCATTERING" LOGIC) ---
+    // --- 2. AGENT C: FIXER (Preserves Positions) ---
     const runFixer = useCallback(async (fixResult: any) => {
         console.log("Applying Fixes (Preserving Layout)...", fixResult);
+        toast.info("Applying Security Fixes...");
 
         // 🟢 STEP 1: Get the exact current positions from the screen
         const currentNodes = getNodes();
-       const rawNodes = fixResult.nodes.map((node: any) => ({
-            id: node.id,
-            type: 'cloudNode',
-            data: {
-                // Label dhoondo: Ya to node.label, ya node.data.label, ya fallback "Resource"
-                label: node.label || node.data?.label || "Resource",
-                status: 'active'
-            },
-            position: { x: 0, y: 0 }
-        }));
 
         // 🟢 STEP 2: Smart Merge - Keep position if node exists
         const finalNodes = fixResult.nodes.map((fixedNode: any) => {
-            // Find the node on screen that matches the ID from the fix result
             const existingNode = currentNodes.find(n => n.id === fixedNode.id);
-
-            // If it exists, KEEP its position. If it's new, put it at 50,50.
             const position = existingNode ? existingNode.position : { x: 50, y: 50 };
 
             return {
@@ -182,14 +160,11 @@ export function useNebulaEngine(
             };
         });
 
-        // 3. Update Nodes
         setNodes(prev => [
-            ...prev.filter(n => ['1', '2', '3'].includes(n.id)), // Keep static nodes
-            ...finalNodes // Add fixed nodes with preserved positions
+            ...prev.filter(n => ['1', '2', '3'].includes(n.id)),
+            ...finalNodes
         ]);
 
-        // 4. Update Edges
-        // We trust the fixResult edges, but ensure they are formatted for React Flow
         const newEdges = (fixResult.edges || []).map((e: any, i: number) => ({
              id: e.id || `edge-${i}-${Date.now()}`,
              source: e.source,
@@ -210,17 +185,19 @@ export function useNebulaEngine(
             terraformCode: fixResult.terraformCode,
             auditReport: [] // Clear errors
         });
-    }, [getNodes, setNodes, setEdges, updateResultNode]);
+
+        toast.success("Infrastructure Fixed & Secured! 🛡️");
+    }, [getNodes, setNodes, setEdges, updateResultNode, toast]);
 
     // --- 3. SMART SYNC (Visuals -> Code) ---
     const syncVisualsToCode = useCallback(async () => {
         setAiLoading(true);
+        toast.info("Syncing Visual Changes...");
         updateResultNode({ output: "🤖 Analyzing Visual Changes..." });
 
         const currentNodes = getNodes();
         const currentEdges = getEdges();
 
-        // Prepare Topology
         const topology = {
             nodes: currentNodes
                 .filter(n => n.type === 'cloudNode')
@@ -235,7 +212,7 @@ export function useNebulaEngine(
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    terraformCode: "", // Empty so it regenerates based on topology
+                    terraformCode: "",
                     auditReport: [
                         {
                             level: "info",
@@ -248,22 +225,14 @@ export function useNebulaEngine(
             const result = await response.json();
             if (result.error) throw new Error(result.error);
 
-            // Re-run the Fixer logic (which now preserves layout!)
-            // Or if you want a full re-layout for Sync, you can use processLayout here.
-            // For now, let's treat Sync as a "Regenerate" event which allows layout updates.
-
-          const rawNodes = result.nodes.map((node: any) => ({
+            // Treat Sync as a "Regenerate" event which allows layout updates/cleanups
+            const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id,
                 type: 'cloudNode',
-                data: {
-                    // Same robust check here
-                    label: node.label || node.data?.label || "Resource",
-                    status: node.data?.status || 'active'
-                },
+                data: { label: node.label, status: 'active' },
                 position: { x: 0, y: 0 }
             }));
 
-            // Layout calculate karo
             const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
 
             setNodes(prev => [
@@ -282,13 +251,46 @@ export function useNebulaEngine(
                 auditReport: []
             });
 
+            toast.success("Code Synced with Visuals!");
+
         } catch (error: any) {
             console.error("Sync Error:", error);
             updateResultNode({ output: `Sync Error: ${error.message}` });
+            toast.error("Sync Failed");
         } finally {
             setAiLoading(false);
         }
-    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges]);
+    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges, toast]);
 
-    return { runArchitect, runFixer, syncVisualsToCode, aiLoading };
+    // --- 4. 🧹 MANUAL AUTO-LAYOUT (For the Toolbar Button) ---
+    const triggerAutoLayout = useCallback(() => {
+        const currentNodes = getNodes();
+        const currentEdges = getEdges();
+
+        // 1. Separate Static Nodes (Prompt, AI, Result) from Cloud Resources
+        // We don't want to move your header nodes!
+        const staticNodes = currentNodes.filter(n => ['1', '2', '3'].includes(n.id));
+        const cloudNodes = currentNodes.filter(n => !['1', '2', '3'].includes(n.id));
+
+        if (cloudNodes.length === 0) {
+            toast.info("No cloud resources to arrange.");
+            return;
+        }
+
+        toast.info("Arranging Layout...");
+
+        // 2. Run the Layout Engine on just the Cloud Nodes
+        // 'TB' = Top to Bottom direction
+        const { finalNodes, layoutedEdges } = processLayout(cloudNodes, currentEdges, 'TB');
+
+        // 3. Update Canvas
+        setNodes([...staticNodes, ...finalNodes]);
+        setEdges(layoutedEdges);
+
+        // Short delay to let React Flow render, then show success
+        setTimeout(() => toast.success("Layout Organized! ✨"), 500);
+
+    }, [getNodes, getEdges, processLayout, setNodes, setEdges, toast]);
+
+    return { runArchitect, runFixer, syncVisualsToCode, triggerAutoLayout, aiLoading };
 }
