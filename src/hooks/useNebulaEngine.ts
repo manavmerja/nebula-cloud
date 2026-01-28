@@ -136,15 +136,15 @@ export function useNebulaEngine(
         }
     }, [getNodes, getEdges, processLayout, setNodes, setEdges, updateResultNode, toast]);
 
-    // --- 2. AGENT C: FIXER (Preserves Positions) ---
+
+    // --- 2. AGENT C: FIXER (✅ UPDATED: Robust Edge Preservation) ---
     const runFixer = useCallback(async (fixResult: any) => {
-        console.log("Applying Fixes (Preserving Layout)...", fixResult);
+        console.log("Applying Fixes...", fixResult);
         toast.info("Applying Security Fixes...");
 
-        // 🟢 STEP 1: Get the exact current positions from the screen
         const currentNodes = getNodes();
 
-        // 🟢 STEP 2: Smart Merge - Keep position if node exists
+        // 1. Process Nodes (Merge & Preserve Positions)
         const finalNodes = fixResult.nodes.map((fixedNode: any) => {
             const existingNode = currentNodes.find(n => n.id === fixedNode.id);
             const position = existingNode ? existingNode.position : { x: 50, y: 50 };
@@ -153,37 +153,53 @@ export function useNebulaEngine(
                 id: fixedNode.id,
                 type: 'cloudNode',
                 data: {
-                    label: fixedNode.label || fixedNode.data?.label || "Resource",
-                    status: 'active' // Force Green status
+                    label: fixedNode.data?.label || fixedNode.label || "Resource",
+                    status: 'active'
                 },
-                position: position // 👈 THIS LINE PREVENTS SCATTERING
+                position: position
             };
         });
 
+        // 2. Validate IDs to prevent ghost edges
+        const validNodeIds = new Set([
+            '1', '2', '3',
+            ...finalNodes.map((n: any) => n.id)
+        ]);
+
+        // 3. Process New Dynamic Edges
+        const newEdges = (fixResult.edges || [])
+            .filter((e: any) => validNodeIds.has(e.source) && validNodeIds.has(e.target))
+            .map((e: any, i: number) => ({
+                 id: e.id || `edge-${i}-${Date.now()}`,
+                 source: e.source,
+                 target: e.target,
+                 animated: true,
+                 style: { stroke: '#94a3b8', strokeWidth: 2 },
+                 type: 'smoothstep',
+                 markerEnd: { type: MarkerType.ArrowClosed },
+            }));
+
+        // 4. Update State
         setNodes(prev => [
             ...prev.filter(n => ['1', '2', '3'].includes(n.id)),
             ...finalNodes
         ]);
 
-        const newEdges = (fixResult.edges || []).map((e: any, i: number) => ({
-             id: e.id || `edge-${i}-${Date.now()}`,
-             source: e.source,
-             target: e.target,
-             animated: true,
-             style: { stroke: '#94a3b8', strokeWidth: 2 },
-             type: 'smoothstep',
-             markerEnd: { type: MarkerType.ArrowClosed },
-        }));
+        setEdges(prev => {
+            // 🛡️ ROBUST FIX: Keep edges connected to Static Nodes (1, 2, 3)
+            // This works even if the Edge ID has changed
+            const staticEdges = prev.filter(e =>
+                ['1', '2', '3'].includes(e.source) ||
+                ['1', '2', '3'].includes(e.target)
+            );
 
-        setEdges(prev => [
-            ...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)),
-            ...newEdges
-        ]);
+            return [...staticEdges, ...newEdges];
+        });
 
         updateResultNode({
             output: `SUMMARY:\n${fixResult.summary}\n\nTERRAFORM CODE:\n${fixResult.terraformCode}`,
             terraformCode: fixResult.terraformCode,
-            auditReport: [] // Clear errors
+            auditReport: []
         });
 
         toast.success("Infrastructure Fixed & Secured! 🛡️");
