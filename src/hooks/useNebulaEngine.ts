@@ -30,7 +30,7 @@ export function useNebulaEngine(
         }
     }, [fitView]);
 
-    // 👇 CHANGED BACK TO 'TB' (Top-Bottom)
+    //  CHANGED BACK TO 'TB' (Top-Bottom)
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'TB') => {
         const processedEdges = rawEdges.map((edge: any, index: number) => ({
             id: edge.id ? `${edge.id}-${index}` : `edge-${index}-${Date.now()}`,
@@ -92,7 +92,7 @@ export function useNebulaEngine(
             const staticEdgeIds = ['e1-2', 'e2-3'];
             const newEdges = data.edges ? data.edges.filter((e: any) => !staticEdgeIds.includes(e.id)) : [];
 
-            // 👇 'TB' Layout
+            //  'TB' Layout
             const { finalNodes, layoutedEdges } = processLayout(newNodes, newEdges, 'TB');
 
             const auditedNodes = finalNodes.map(node => {
@@ -127,7 +127,7 @@ export function useNebulaEngine(
         const rawNodes = fixResult.nodes.map((node: any) => ({
             id: node.id, type: 'cloudNode', data: { label: extractLabel(node), status: 'active' }, position: { x: 0, y: 0 }
         }));
-        // 👇 'TB' Layout
+        //  'TB' Layout
         const { finalNodes, layoutedEdges } = processLayout(rawNodes, fixResult.edges || [], 'TB');
         setNodes(prev => [...prev.filter(n => ['1', '2', '3'].includes(n.id)), ...finalNodes]);
         setEdges(prev => [...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)), ...layoutedEdges]);
@@ -176,7 +176,7 @@ export function useNebulaEngine(
             const rawNodes = result.nodes.map((node: any) => ({
                 id: node.id, type: 'cloudNode', data: { label: extractLabel(node), status: 'active' }, position: { x: 0, y: 0 }
             }));
-            // 👇 'TB' Layout
+            //  'TB' Layout
             const { finalNodes, layoutedEdges } = processLayout(rawNodes, result.edges || [], 'TB');
             setNodes(prev => [...prev.filter(n => ['1', '2', '3'].includes(n.id)), ...finalNodes]);
             setEdges(prev => [...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)), ...layoutedEdges]);
@@ -201,7 +201,7 @@ export function useNebulaEngine(
         if (cloudNodes.length === 0) { toast.info("No cloud resources to arrange."); return; }
         toast.info("Arranging Layout...");
 
-        // 👇 'TB' Layout
+        //  'TB' Layout
         const { finalNodes, layoutedEdges } = processLayout(cloudNodes, currentEdges, 'TB');
 
         setNodes([...staticNodes, ...finalNodes]);

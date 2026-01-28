@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callAIModel, AgentType } from '../generate/agents/config';
 
-// --- 🧠 AGENT C: THE FIXER ---
+// --- AGENT C: THE FIXER ---
 const FIXER_PROMPT = `
 You are a Senior DevOps Engineer & Security Expert.
 Your task is to FIX or SYNC the provided Terraform code.
