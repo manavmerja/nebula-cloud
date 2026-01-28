@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
-    Controls,
-    MiniMap,
     Background,
     useReactFlow,
-    Node // 👈 Added Node import
+    Node,
+    Edge
 } from 'reactflow';
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
@@ -24,14 +23,16 @@ import { useToast } from '@/context/ToastContext';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import SaveModal from './modals/SaveModal';
-import PropertiesPanel from './PropertiesPanel'; // 👈 Import Panel
+import PropertiesPanel from './PropertiesPanel';
 import PromptNode from './nodes/PromptNode';
 import AINode from './nodes/AINode';
 import ResultNode from './nodes/ResultNode';
 import CloudServiceNode from './nodes/CloudServiceNode';
 import EditorToolbar from './EditorToolbar';
 import NebulaMinimap from './NebulaMinimap';
+import ContextMenu from './ContextMenu';
 
+// Node Types Configuration
 const nodeTypes = {
     promptNode: PromptNode,
     aiNode: AINode,
@@ -40,7 +41,13 @@ const nodeTypes = {
 };
 
 function Flow() {
-    // 1. Canvas State
+    // 1. Core Refs & State
+    const ref = useRef<HTMLDivElement>(null); // Ref for the editor container
+    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [menu, setMenu] = useState<any>(null); // Context Menu State
+
+    // 2. Canvas Hooks (from useFlowState)
     const {
         nodes, edges, setNodes, setEdges,
         onNodesChange, onEdgesChange, onConnect,
@@ -49,43 +56,38 @@ function Flow() {
         projectName, setProjectName
     } = useFlowState();
 
-    // 2. AI Engine
+    // 3. AI Engine Hooks
     const { runArchitect, runFixer, syncVisualsToCode, triggerAutoLayout, aiLoading } = useNebulaEngine(
         setNodes, setEdges, updateResultNode
     );
 
-    // 3. Project Storage
+    // 4. Storage & Utilities
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
         nodes, edges, setNodes, setEdges, setProjectName
     );
-
-    // 4. Utilities
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
-    const { getNodes } = useReactFlow();
+    const { getNodes, fitView } = useReactFlow(); // fitView needed for "View Terraform" zoom
     const toast = useToast();
 
-    // 5. Local State
-    const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+    // --- EFFECTS ---
 
-    // 🆕 SELECTION STATE: Track selected node ID
-    const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-
-    // Load Project
+    // Load Project ID from URL if present
     useEffect(() => {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    // Legacy Sync
+    // Legacy Sync Handler (Keep for compatibility)
     const onSyncCode = useCallback(async (newCode: string) => {
          // console.log("Legacy Sync triggered", newCode);
     }, []);
 
-    // Result Node Wiring
+    // Wire up Result Node (ID: '3') with Engine Functions
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
+                // Prevent infinite loop if functions haven't changed
                 if (
                     node.data.onSync === onSyncCode &&
                     node.data.onFixComplete === runFixer &&
@@ -106,7 +108,9 @@ function Flow() {
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
-    // Run Handler
+    // --- HANDLERS ---
+
+    // 1. Run AI Architect
     const handleRunArchitect = () => {
         const currentNodes = getNodes();
         const inputNode = currentNodes.find(n => n.id === '1');
@@ -119,7 +123,7 @@ function Flow() {
         runArchitect(promptText);
     };
 
-    // Save Handlers
+    // 2. Save Project
     const handleSaveClick = () => {
         if (!session) {
             toast.error("Please login to save your project! 🔒");
@@ -133,29 +137,65 @@ function Flow() {
         setIsSaveModalOpen(false);
     };
 
-    // 🆕 SELECTION HANDLERS
+    // 3. Node Selection (Left Click)
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        setSelectedNodeId(node.id); // Select clicked node
+        setSelectedNodeId(node.id); // Opens Properties Panel
+        setMenu(null); // Close Context Menu if open
     }, []);
 
+    // 4. Canvas Click (Deselect)
     const onPaneClick = useCallback(() => {
-        setSelectedNodeId(null); // Deselect when clicking empty canvas
+        setSelectedNodeId(null);
+        setMenu(null);
     }, []);
 
-    // 🆕 DERIVED STATE: Find the actual node object
-    const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+    // 5. Right-Click Context Menu Logic
+    const onNodeContextMenu = useCallback(
+        (event: React.MouseEvent, node: Node) => {
+            event.preventDefault(); // Stop default browser menu
 
-    const handleAutoLayout = () => {
-        // Call your layout utility here using current nodes/edges
-        // For now, if you don't have it exposed easily, you can leave this prop empty
-        // or refactor useNebulaEngine to return 'triggerLayout'.
-        console.log("Triggering Auto Layout...");
+            if (!ref.current) return;
+
+            // Calculate position relative to container
+            const pane = ref.current.getBoundingClientRect();
+
+            setMenu({
+                id: node.id,
+                // Smart Positioning: keeps menu inside the screen
+                top: event.clientY < pane.height - 200 ? event.clientY - pane.top : undefined,
+                left: event.clientX < pane.width - 200 ? event.clientX - pane.left : undefined,
+                right: event.clientX >= pane.width - 200 ? pane.width - (event.clientX - pane.left) : undefined,
+                bottom: event.clientY >= pane.height - 200 ? pane.height - (event.clientY - pane.top) : undefined,
+            });
+        },
+        [setMenu]
+    );
+
+    // --- CONTEXT MENU ACTIONS ---
+
+    // Action A: Configure -> Opens Properties Panel
+    const handleContextMenuConfigure = (id: string) => {
+        setSelectedNodeId(id); // Simple: Select the node, Panel opens automatically
     };
 
-    return (
-        <div className="flex w-full h-screen bg-black overflow-hidden relative">
+    // Action B: View Code -> Zooms to Result Node
+    const handleContextMenuViewCode = () => {
+        fitView({
+            nodes: [{ id: '3' }], // Focus on the Result Node
+            duration: 800,        // Smooth animation
+            padding: 0.2,
+        });
+        // Optional: Select it too, just in case Properties Panel has relevant info
+        setSelectedNodeId('3');
+    };
 
-            {/* Modal */}
+    // Derived State for Panel
+    const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+
+    return (
+        <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
+
+            {/* Save Modal */}
             <SaveModal
                 isOpen={isSaveModalOpen}
                 onClose={() => setIsSaveModalOpen(false)}
@@ -163,9 +203,9 @@ function Flow() {
                 currentName={projectName}
             />
 
-            {/* Warning Toast */}
+            {/* Deletion Warning Toast */}
             {lastDeletedNode && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce pointer-events-none">
                     <div className="bg-red-900/90 text-white px-4 py-2 rounded-lg border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center gap-3 backdrop-blur-md">
                         <AlertTriangle className="text-red-400" size={20} />
                         <div>
@@ -177,7 +217,9 @@ function Flow() {
             )}
 
             <Sidebar />
+
             <div className="flex-1 relative h-full">
+                {/* Background Gradient */}
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
 
                 <div className="relative z-20">
@@ -192,15 +234,16 @@ function Flow() {
                     />
                 </div>
 
-                {/* 🆕 PROPERTIES PANEL (Z-Index 30 ensures it floats above canvas) */}
+                {/* Properties Panel (Slides in when selectedNodeId is set) */}
                 <PropertiesPanel
                     selectedNode={selectedNode}
                     onClose={() => setSelectedNodeId(null)}
                 />
 
-                {/* ✅ NEW: Custom Toolbar (Replaces standard Controls) */}
-                <EditorToolbar onAutoLayout={handleAutoLayout} />
+                {/* Toolbar */}
                 <EditorToolbar onAutoLayout={triggerAutoLayout} />
+
+                {/* Main React Flow Canvas */}
                 <div className="absolute inset-0 z-10">
                     <ReactFlow
                         nodes={nodes}
@@ -212,17 +255,27 @@ function Flow() {
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
-                        onNodeClick={onNodeClick} // 👈 Added Selection Logic
-                        onPaneClick={onPaneClick} // 👈 Added Deselection Logic
+                        onNodeClick={onNodeClick}             // Left Click -> Selects Node -> Opens Panel
+                        onNodeContextMenu={onNodeContextMenu} // Right Click -> Opens Custom Menu
+                        onPaneClick={onPaneClick}             // Canvas Click -> Deselects
                         nodeTypes={nodeTypes}
                         fitView
                         style={{ background: 'transparent' }}
                     >
-
+                        <Background color="#222" gap={25} size={1} variant={"dots" as any} />
 
                         <NebulaMinimap />
-                        
-                        <Background color="#222" gap={25} size={1} variant={"dots" as any} />
+
+                        {/* Custom Context Menu */}
+                        {menu && (
+                            <ContextMenu
+                                {...menu}
+                                onClose={() => setMenu(null)}
+                                onConfigure={handleContextMenuConfigure}
+                                onViewCode={handleContextMenuViewCode}
+                            />
+                        )}
+
                     </ReactFlow>
                 </div>
             </div>
@@ -230,6 +283,7 @@ function Flow() {
     );
 }
 
+// Wrap in Provider to access React Flow hooks internally
 export default function FlowEditor() {
     return (
         <ReactFlowProvider>
