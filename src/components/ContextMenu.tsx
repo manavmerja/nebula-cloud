@@ -1,93 +1,110 @@
-import React, { useCallback } from 'react';
-import { useReactFlow } from 'reactflow';
-import { Trash2, Copy, Settings, Code } from 'lucide-react';
+import React from 'react';
+import { Settings, Code, Copy, Layers, Trash2, X } from 'lucide-react'; // Added 'Layers' for Duplicate icon variety
 
 interface ContextMenuProps {
   id: string;
-  top: number;
-  left: number;
+  top?: number;
+  left?: number;
   right?: number;
   bottom?: number;
   onClose: () => void;
-  onConfigure: (id: string) => void; // 👈 New Callback
-  onViewCode: () => void;            // 👈 New Callback
+  onConfigure: (id: string) => void;
+  onViewCode: () => void;
+  onCopy: () => void;      // 👈 Added
+  onDuplicate: () => void;
+  onDelete: () => void;
 }
 
 export default function ContextMenu({
-  id, top, left, right, bottom, onClose, onConfigure, onViewCode
+  id,
+  top,
+  left,
+  right,
+  bottom,
+  onClose,
+  onConfigure,
+  onViewCode,
+  onCopy, // 👈 Added
+  onDuplicate,
+  onDelete,
 }: ContextMenuProps) {
-  const { getNode, setNodes, addNodes, setEdges } = useReactFlow();
-
-  // --- ACTIONS ---
-
-  const duplicateNode = useCallback(() => {
-    const node = getNode(id);
-    if (!node) return;
-
-    const position = {
-      x: node.position.x + 50,
-      y: node.position.y + 50,
-    };
-
-    addNodes({
-      ...node,
-      id: `${node.type}-${Date.now()}`,
-      position,
-      selected: true,
-      data: { ...node.data, label: `${node.data.label} (Copy)` },
-    });
-    onClose();
-  }, [id, getNode, addNodes, onClose]);
-
-  const deleteNode = useCallback(() => {
-    setNodes((nodes) => nodes.filter((n) => n.id !== id));
-    setEdges((edges) => edges.filter((e) => e.source !== id && e.target !== id));
-    onClose();
-  }, [id, setNodes, setEdges, onClose]);
-
   return (
     <div
       style={{ top, left, right, bottom }}
-      className="absolute z-50 w-48 bg-[#151921] border border-gray-800 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col p-1 animate-in fade-in zoom-in-95 duration-100"
+      className="absolute z-50 w-64 bg-[#151921] border border-gray-700 rounded-lg shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
     >
-      <div className="px-3 py-2 border-b border-gray-800/50 mb-1">
-        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Node Actions</span>
+      {/* Header */}
+      <div className="px-3 py-2 bg-gray-800/50 border-b border-gray-700 flex items-center justify-between">
+        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Node Actions</span>
+        <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+            <X size={14} />
+        </button>
       </div>
 
-      {/* ✅ WIRED UP: Opens Properties Panel */}
-      <MenuButton
-        icon={Settings}
-        label="Configure"
-        onClick={() => { onConfigure(id); onClose(); }}
-      />
+      {/* Primary Actions */}
+      <div className="p-1 flex flex-col gap-0.5">
+        <MenuButton
+            onClick={() => { onConfigure(id); onClose(); }}
+            icon={Settings}
+            label="Configure Node"
+        />
+        <MenuButton
+            onClick={() => { onViewCode(); onClose(); }}
+            icon={Code}
+            label="View Terraform"
+        />
+      </div>
 
-      {/* ✅ WIRED UP: Jumps to Result Node */}
-      <MenuButton
-        icon={Code}
-        label="View Terraform"
-        onClick={() => { onViewCode(); onClose(); }}
-      />
+      <div className="h-px bg-gray-700 mx-2" />
 
-      <MenuButton icon={Copy} label="Duplicate" onClick={duplicateNode} />
-
-      <div className="h-px bg-gray-800 my-1 mx-2" />
-
-      <MenuButton icon={Trash2} label="Delete" onClick={deleteNode} variant="danger" />
+      {/* Secondary Actions */}
+      <div className="p-1 flex flex-col gap-0.5">
+        {/* 🚀 NEW: Copy Button */}
+        <MenuButton
+            onClick={() => { onCopy(); onClose(); }}
+            icon={Copy}
+            label="Copy"
+            shortcut="Ctrl+C"
+        />
+        <MenuButton
+            onClick={() => { onDuplicate(); onClose(); }}
+            icon={Layers}
+            label="Duplicate"
+            shortcut="Ctrl+D"
+        />
+        <MenuButton
+            onClick={() => { onDelete(); onClose(); }}
+            icon={Trash2}
+            label="Delete"
+            shortcut="Del"
+            variant="danger"
+        />
+      </div>
     </div>
   );
 }
 
 // Helper Sub-component
-const MenuButton = ({ icon: Icon, label, onClick, variant = 'default' }: any) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors text-left
-      ${variant === 'danger'
-        ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
-        : 'text-gray-300 hover:bg-white/5 hover:text-white'
-      }`}
-  >
-    <Icon size={14} />
-    {label}
-  </button>
+interface MenuButtonProps {
+    onClick: () => void;
+    icon: any;
+    label: string;
+    shortcut?: string;
+    variant?: 'default' | 'danger';
+}
+
+const MenuButton = ({ onClick, icon: Icon, label, shortcut, variant = 'default' }: MenuButtonProps) => (
+    <button
+        onClick={onClick}
+        className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-all
+            ${variant === 'danger'
+                ? 'text-red-400 hover:bg-red-500/10 hover:text-red-300'
+                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+            }
+        `}
+    >
+        <Icon size={16} />
+        <span className="flex-1 text-left">{label}</span>
+        {shortcut && <span className="text-[10px] text-gray-600 font-mono">{shortcut}</span>}
+    </button>
 );

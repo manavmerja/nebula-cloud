@@ -20,6 +20,8 @@ import 'reactflow/dist/style.css';
 import { useFlowState } from '@/hooks/useFlowState';
 import { useProjectStorage } from '@/hooks/useProjectStorage';
 import { useNebulaEngine } from '@/hooks/useNebulaEngine';
+import { useUndoRedo } from '@/hooks/useUndoRedo';
+import { useClipboard } from '@/hooks/useClipboard';
 import { useToast } from '@/context/ToastContext';
 
 // Components
@@ -35,9 +37,8 @@ import EditorToolbar from './EditorToolbar';
 import NebulaMinimap from './NebulaMinimap';
 import ContextMenu from './ContextMenu';
 import CommandPalette from './CommandPalette';
-import NebulaEdge from './edges/NebulaEdge'; // Ensure this path is correct
+import NebulaEdge from './edges/NebulaEdge';
 
-// Node Types Configuration
 const nodeTypes = {
     promptNode: PromptNode,
     aiNode: AINode,
@@ -45,52 +46,58 @@ const nodeTypes = {
     cloudNode: CloudServiceNode,
 };
 
-// Edge Types Configuration
 const edgeTypes: EdgeTypes = {
     nebula: NebulaEdge,
 };
 
 function Flow() {
-    // 1. Core Refs & State
     const ref = useRef<HTMLDivElement>(null);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
     const [menu, setMenu] = useState<any>(null);
     const [isCommandOpen, setIsCommandOpen] = useState(false);
 
-    // 2. Canvas Hooks
+    // Flow State
     const {
         nodes, edges, setNodes, setEdges,
         onNodesChange, onEdgesChange,
-        // Note: We do NOT use the default onConnect here, we define a wrapper below
-        onDragOver, onDrop, onNodesDelete, lastDeletedNode,
+        onDragOver,
+        onDrop,
+        onNodesDelete: originalOnNodesDelete,
+        lastDeletedNode,
         setReactFlowInstance, updateResultNode,
         projectName, setProjectName
     } = useFlowState();
 
-    // 3. AI Engine Hooks
+    // React Flow Internals
+    const { deleteElements, getNodes, fitView } = useReactFlow();
+
+    // AI Engine
     const { runArchitect, runFixer, syncVisualsToCode, triggerAutoLayout, aiLoading } = useNebulaEngine(
         setNodes, setEdges, updateResultNode
     );
 
-    // 4. Storage & Utilities
+    // Storage
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
         nodes, edges, setNodes, setEdges, setProjectName
     );
+
+    // Utilities
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
-    const { getNodes, fitView } = useReactFlow();
     const toast = useToast();
+
+    // Features
+    const { undo, redo, takeSnapshot, canUndo, canRedo } = useUndoRedo();
+    const { duplicate, copy, paste } = useClipboard();
 
     // --- EFFECTS ---
 
-    // Load Project
     useEffect(() => {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    // Legacy Sync Handler
     const onSyncCode = useCallback(async (newCode: string) => {
          // console.log("Legacy Sync triggered", newCode);
     }, []);
@@ -104,97 +111,65 @@ function Flow() {
                     node.data.onFixComplete === runFixer &&
                     node.data.onVisualSync === syncVisualsToCode
                 ) return node;
-
                 return {
                     ...node,
-                    data: {
-                        ...node.data,
-                        onSync: onSyncCode,
-                        onFixComplete: runFixer,
-                        onVisualSync: syncVisualsToCode
-                    }
+                    data: { ...node.data, onSync: onSyncCode, onFixComplete: runFixer, onVisualSync: syncVisualsToCode }
                 };
             }
             return node;
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
-    // -----------------------------------------------------------
-    // 🚀 EDGE ENFORCER (The Fix)
-    // This effect runs whenever edges or nodes change.
-    // It guarantees that edges between System Nodes ALWAYS have animation,
-    // regardless of how they were created (Manual, AI, or Load).
-    // -----------------------------------------------------------
+    // Edge Enforcer
     useEffect(() => {
-        const systemTypes = ['promptNode', 'aiNode', 'resultNode'];
         let hasChanges = false;
-
         const updatedEdges = edges.map((edge) => {
-            // Find connected nodes
-            const sourceNode = nodes.find((n) => n.id === edge.source);
-            const targetNode = nodes.find((n) => n.id === edge.target);
-
-            // If nodes aren't found yet (loading state), keep edge as is
-            if (!sourceNode || !targetNode) return edge;
-
-            // Check connection type
-            const isSystemConnection =
-                systemTypes.includes(sourceNode.type || '') &&
-                systemTypes.includes(targetNode.type || '');
-
-            // We update the edge IF:
-            // 1. It is NOT a 'nebula' type edge yet
-            // 2. OR the 'animated' data flag doesn't match the reality (e.g., manual connect missed it)
-            const currentAnimatedState = edge.data?.animated;
-
-            if (edge.type !== 'nebula' || currentAnimatedState !== isSystemConnection) {
+            if (edge.type !== 'nebula' || !edge.data?.animated) {
                 hasChanges = true;
                 return {
                     ...edge,
-                    type: 'nebula', // Force our custom component
-                    animated: false, // ReactFlow default dash OFF
+                    type: 'nebula',
+                    animated: false,
                     style: { stroke: '#334155', strokeWidth: 2 },
-                    data: {
-                        ...edge.data,
-                        animated: isSystemConnection, // True for System, False for Cloud
-                    },
+                    data: { animated: true },
                 };
             }
             return edge;
         });
-
-        if (hasChanges) {
-            setEdges(updatedEdges);
-        }
-    }, [nodes, edges, setEdges]);
+        if (hasChanges) setEdges(updatedEdges);
+    }, [edges, setEdges]);
 
 
     // --- HANDLERS ---
 
-    // Manual Connection Handler (Immediate Feedback)
     const onConnectWrapper = useCallback((params: Connection) => {
-        const sourceNode = nodes.find((n) => n.id === params.source);
-        const targetNode = nodes.find((n) => n.id === params.target);
-
-        const systemNodeTypes = ['promptNode', 'aiNode', 'resultNode'];
-        const isSystemConnection =
-            sourceNode &&
-            targetNode &&
-            systemNodeTypes.includes(sourceNode.type || '') &&
-            systemNodeTypes.includes(targetNode.type || '');
-
+        takeSnapshot();
         const newEdge = {
             ...params,
             type: 'nebula',
             animated: false,
-            data: {
-                animated: isSystemConnection
-            },
+            data: { animated: true },
             style: { stroke: '#334155', strokeWidth: 2 },
         };
-
         setEdges((eds) => addEdge(newEdge, eds));
-    }, [nodes, setEdges]);
+    }, [setEdges, takeSnapshot]);
+
+    const onNodesDeleteWrapper = useCallback((deleted: Node[]) => {
+        takeSnapshot();
+        if (originalOnNodesDelete) originalOnNodesDelete(deleted);
+    }, [takeSnapshot, originalOnNodesDelete]);
+
+    const onNodeDragStart = useCallback(() => {
+        takeSnapshot();
+    }, [takeSnapshot]);
+
+    const handleCommandPaletteToggle = useCallback(() => {
+        if (!isCommandOpen) takeSnapshot();
+        setIsCommandOpen(prev => !prev);
+    }, [isCommandOpen, takeSnapshot]);
+
+
+    // --- ACTION HANDLERS ---
 
     const handleRunArchitect = () => {
         const currentNodes = getNodes();
@@ -205,6 +180,7 @@ function Flow() {
             toast.error("Please enter a prompt first!");
             return;
         }
+        takeSnapshot();
         runArchitect(promptText);
     };
 
@@ -221,6 +197,7 @@ function Flow() {
         setIsSaveModalOpen(false);
     };
 
+    // Node Click Handlers
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
         setSelectedNodeId(node.id);
         setMenu(null);
@@ -248,24 +225,34 @@ function Flow() {
         [setMenu]
     );
 
-    const handleContextMenuConfigure = (id: string) => {
-        setSelectedNodeId(id);
+    // Context Menu Actions
+    const handleContextMenuConfigure = (id: string) => setSelectedNodeId(id);
+    const handleContextMenuViewCode = () => {
+        fitView({ nodes: [{ id: '3' }], duration: 800, padding: 0.2 });
+        setSelectedNodeId('3');
+    };
+    const handleContextMenuDelete = (id: string) => {
+        takeSnapshot();
+        const node = nodes.find(n => n.id === id);
+        if (node) deleteElements({ nodes: [node] });
     };
 
-    const handleContextMenuViewCode = () => {
-        fitView({
-            nodes: [{ id: '3' }],
-            duration: 800,
-            padding: 0.2,
-        });
-        setSelectedNodeId('3');
+    // 🚀 NEW: Context Menu Copy/Duplicate
+    const handleContextMenuDuplicate = () => {
+        takeSnapshot();
+        duplicate();
+    };
+
+    // 👇 Added this handler
+    const handleContextMenuCopy = () => {
+        copy();
+        // Optional: toast.success("Copied to clipboard!");
     };
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
 
     return (
         <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
-
             <SaveModal
                 isOpen={isSaveModalOpen}
                 onClose={() => setIsSaveModalOpen(false)}
@@ -308,8 +295,15 @@ function Flow() {
                 />
 
                 <EditorToolbar
-                    onAutoLayout={triggerAutoLayout}
-                    onOpenCommandPalette={() => setIsCommandOpen(true)}
+                    onAutoLayout={() => {
+                        takeSnapshot();
+                        triggerAutoLayout();
+                    }}
+                    onOpenCommandPalette={handleCommandPaletteToggle}
+                    onUndo={undo}
+                    onRedo={redo}
+                    canUndo={canUndo}
+                    canRedo={canRedo}
                 />
 
                 <div className="absolute inset-0 z-10">
@@ -318,10 +312,9 @@ function Flow() {
                         edges={edges}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
-                        onNodesDelete={onNodesDelete}
-
-                        // 🚀 Using our Custom Wrapper for manual connections
+                        onNodesDelete={onNodesDeleteWrapper}
                         onConnect={onConnectWrapper}
+                        onNodeDragStart={onNodeDragStart}
 
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
@@ -329,26 +322,23 @@ function Flow() {
                         onNodeClick={onNodeClick}
                         onNodeContextMenu={onNodeContextMenu}
                         onPaneClick={onPaneClick}
-                        nodeTypes={nodeTypes}
 
-                        // 🚀 Register Custom Edges & Defaults
+                        nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
                         defaultEdgeOptions={{
                             type: 'nebula',
                             style: { stroke: '#334155', strokeWidth: 2 },
                         }}
-
                         fitView
                         style={{ background: 'transparent' }}
                     >
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
-
                         <NebulaMinimap />
 
                         <CommandPalette
                            isOpen={isCommandOpen}
                            onClose={() => setIsCommandOpen(false)}
-                           onToggle={() => setIsCommandOpen(prev => !prev)}
+                           onToggle={handleCommandPaletteToggle}
                         />
 
                         {menu && (
@@ -357,9 +347,11 @@ function Flow() {
                                 onClose={() => setMenu(null)}
                                 onConfigure={handleContextMenuConfigure}
                                 onViewCode={handleContextMenuViewCode}
+                                onDelete={() => handleContextMenuDelete(menu.id)}
+                                onDuplicate={handleContextMenuDuplicate}
+                                onCopy={handleContextMenuCopy} // 👈 Added
                             />
                         )}
-
                     </ReactFlow>
                 </div>
             </div>

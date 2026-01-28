@@ -42,7 +42,7 @@ export default function NebulaEdge({
         </circle>
         <circle r="3" fill="#22d3ee">
             {/* Native SVG Animation: Follows the path infinitely */}
-            <animateMotion dur="2s" begin="1s"repeatCount="indefinite" path={edgePath} />
+            <animateMotion dur="2s" begin="1s" repeatCount="indefinite" path={edgePath} />
         </circle>
 
         {/* Optional: Second trailing packet for dense traffic effect */}
