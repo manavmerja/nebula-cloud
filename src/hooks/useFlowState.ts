@@ -17,14 +17,14 @@ import {
 
 // Initial Data
 const initialNodes: Node[] = [
-    { id: '1', type: 'promptNode', data: { text: '' }, position: { x: 50, y: 100 } },
-    { id: '2', type: 'aiNode', data: { model: 'groq-llama' }, position: { x: 450, y: 100 } },
-    { id: '3', type: 'resultNode', data: { output: '' }, position: { x: 900, y: 100 } },
+    { id: '1', type: 'promptNode', data: { text: '' }, position: { x: 50, y: 100 } , deletable : false},
+    { id: '2', type: 'aiNode', data: { model: 'groq-llama' }, position: { x: 450, y: 100 }, deletable : false },
+    { id: '3', type: 'resultNode', data: { output: '' }, position: { x: 900, y: 100 }, deletable : false },
 ];
 
 const initialEdges: Edge[] = [
-    { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#22d3ee' } },
-    { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: '#22c55e' } },
+    { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#22d3ee' }, deletable : false },
+    { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: '#22c55e' }, deletable : false },
 ];
 
 export function useFlowState() {
