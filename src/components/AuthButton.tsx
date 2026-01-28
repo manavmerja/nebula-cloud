@@ -16,7 +16,7 @@ export default function AuthButton() {
     return (
       <div className="flex items-center gap-3 pl-3 pr-1 py-1 bg-[#151921] border border-gray-800 rounded-full shadow-inner group transition-colors hover:border-gray-700">
 
-        {/* ... (Keep User Info & Avatar code same as before) ... */}
+        {/* User Info */}
         <div className="hidden sm:flex flex-col text-right mr-1">
           <span className="text-[10px] font-bold text-gray-300 leading-none">{name?.split(' ')[0]}</span>
           <div className="flex items-center justify-end gap-1 mt-0.5">
@@ -25,6 +25,7 @@ export default function AuthButton() {
           </div>
         </div>
 
+        {/* Avatar */}
         <div className="relative h-7 w-7 rounded-full overflow-hidden border border-white/10 group-hover:border-white/30 transition-colors shadow-sm">
             {!imageError && image ? (
                 <img src={image} alt="Profile" className="h-full w-full object-cover" onError={() => setImageError(true)} />
@@ -35,8 +36,9 @@ export default function AuthButton() {
             )}
         </div>
 
+        {/* Logout */}
         <button
-          onClick={() => signOut({ callbackUrl: "/" })} // Redirect to Home on Logout
+          onClick={() => signOut({ callbackUrl: "/" })}
           className="h-7 w-7 flex items-center justify-center rounded-full bg-gray-800 hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition-all border border-transparent hover:border-red-500/20"
           title="Logout"
         >
@@ -46,12 +48,13 @@ export default function AuthButton() {
     );
   }
 
-  // --- LOGGED OUT STATE (Updated Redirects) ---
+  // --- LOGGED OUT STATE ---
   return (
     <div className="flex gap-2">
       <button
-        // 🚀 REDIRECT TO INTRO AFTER LOGIN
-        onClick={() => signIn("github", { callbackUrl: "/intro" })}
+        // ✅ FIXED: Removed redirect to /intro.
+        // Now it will reload the current page (Main Page) after login.
+        onClick={() => signIn("github")}
         className="flex items-center gap-2 bg-[#24292e] hover:bg-[#2f363d] text-white px-3 py-1.5 rounded-full text-xs font-semibold border border-gray-700 transition-all active:scale-[0.98] shadow-sm"
       >
         <Github size={14} />
@@ -59,8 +62,8 @@ export default function AuthButton() {
       </button>
 
       <button
-        // 🚀 REDIRECT TO INTRO AFTER LOGIN
-        onClick={() => signIn("google", { callbackUrl: "/intro" })}
+        // ✅ FIXED: Removed redirect to /intro.
+        onClick={() => signIn("google")}
         className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-800 px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-[0.98] shadow-sm border border-gray-200"
       >
         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
