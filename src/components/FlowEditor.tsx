@@ -6,7 +6,10 @@ import ReactFlow, {
     Background,
     useReactFlow,
     Node,
-    Edge
+    Edge,
+    addEdge,
+    Connection,
+    EdgeTypes
 } from 'reactflow';
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
@@ -32,6 +35,7 @@ import EditorToolbar from './EditorToolbar';
 import NebulaMinimap from './NebulaMinimap';
 import ContextMenu from './ContextMenu';
 import CommandPalette from './CommandPalette';
+import NebulaEdge from './edges/NebulaEdge'; // Ensure this path is correct
 
 // Node Types Configuration
 const nodeTypes = {
@@ -41,20 +45,24 @@ const nodeTypes = {
     cloudNode: CloudServiceNode,
 };
 
+// Edge Types Configuration
+const edgeTypes: EdgeTypes = {
+    nebula: NebulaEdge,
+};
+
 function Flow() {
     // 1. Core Refs & State
-    const ref = useRef<HTMLDivElement>(null); // Ref for the editor container
+    const ref = useRef<HTMLDivElement>(null);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-    const [menu, setMenu] = useState<any>(null); // Context Menu State
-
-    // 🚀 NEW: Command Palette State
+    const [menu, setMenu] = useState<any>(null);
     const [isCommandOpen, setIsCommandOpen] = useState(false);
 
-    // 2. Canvas Hooks (from useFlowState)
+    // 2. Canvas Hooks
     const {
         nodes, edges, setNodes, setEdges,
-        onNodesChange, onEdgesChange, onConnect,
+        onNodesChange, onEdgesChange,
+        // Note: We do NOT use the default onConnect here, we define a wrapper below
         onDragOver, onDrop, onNodesDelete, lastDeletedNode,
         setReactFlowInstance, updateResultNode,
         projectName, setProjectName
@@ -77,7 +85,7 @@ function Flow() {
 
     // --- EFFECTS ---
 
-    // Load Project ID from URL if present
+    // Load Project
     useEffect(() => {
         if (projectId) loadProject(projectId);
     }, [projectId]);
@@ -87,7 +95,7 @@ function Flow() {
          // console.log("Legacy Sync triggered", newCode);
     }, []);
 
-    // Wire up Result Node (ID: '3') with Engine Functions
+    // Wire up Result Node
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
@@ -111,9 +119,83 @@ function Flow() {
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
+    // -----------------------------------------------------------
+    // 🚀 EDGE ENFORCER (The Fix)
+    // This effect runs whenever edges or nodes change.
+    // It guarantees that edges between System Nodes ALWAYS have animation,
+    // regardless of how they were created (Manual, AI, or Load).
+    // -----------------------------------------------------------
+    useEffect(() => {
+        const systemTypes = ['promptNode', 'aiNode', 'resultNode'];
+        let hasChanges = false;
+
+        const updatedEdges = edges.map((edge) => {
+            // Find connected nodes
+            const sourceNode = nodes.find((n) => n.id === edge.source);
+            const targetNode = nodes.find((n) => n.id === edge.target);
+
+            // If nodes aren't found yet (loading state), keep edge as is
+            if (!sourceNode || !targetNode) return edge;
+
+            // Check connection type
+            const isSystemConnection =
+                systemTypes.includes(sourceNode.type || '') &&
+                systemTypes.includes(targetNode.type || '');
+
+            // We update the edge IF:
+            // 1. It is NOT a 'nebula' type edge yet
+            // 2. OR the 'animated' data flag doesn't match the reality (e.g., manual connect missed it)
+            const currentAnimatedState = edge.data?.animated;
+
+            if (edge.type !== 'nebula' || currentAnimatedState !== isSystemConnection) {
+                hasChanges = true;
+                return {
+                    ...edge,
+                    type: 'nebula', // Force our custom component
+                    animated: false, // ReactFlow default dash OFF
+                    style: { stroke: '#334155', strokeWidth: 2 },
+                    data: {
+                        ...edge.data,
+                        animated: isSystemConnection, // True for System, False for Cloud
+                    },
+                };
+            }
+            return edge;
+        });
+
+        if (hasChanges) {
+            setEdges(updatedEdges);
+        }
+    }, [nodes, edges, setEdges]);
+
+
     // --- HANDLERS ---
 
-    // 1. Run AI Architect
+    // Manual Connection Handler (Immediate Feedback)
+    const onConnectWrapper = useCallback((params: Connection) => {
+        const sourceNode = nodes.find((n) => n.id === params.source);
+        const targetNode = nodes.find((n) => n.id === params.target);
+
+        const systemNodeTypes = ['promptNode', 'aiNode', 'resultNode'];
+        const isSystemConnection =
+            sourceNode &&
+            targetNode &&
+            systemNodeTypes.includes(sourceNode.type || '') &&
+            systemNodeTypes.includes(targetNode.type || '');
+
+        const newEdge = {
+            ...params,
+            type: 'nebula',
+            animated: false,
+            data: {
+                animated: isSystemConnection
+            },
+            style: { stroke: '#334155', strokeWidth: 2 },
+        };
+
+        setEdges((eds) => addEdge(newEdge, eds));
+    }, [nodes, setEdges]);
+
     const handleRunArchitect = () => {
         const currentNodes = getNodes();
         const inputNode = currentNodes.find(n => n.id === '1');
@@ -126,7 +208,6 @@ function Flow() {
         runArchitect(promptText);
     };
 
-    // 2. Save Project
     const handleSaveClick = () => {
         if (!session) {
             toast.error("Please login to save your project! 🔒");
@@ -140,31 +221,24 @@ function Flow() {
         setIsSaveModalOpen(false);
     };
 
-    // 3. Node Selection (Left Click)
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
-        setSelectedNodeId(node.id); // Opens Properties Panel
-        setMenu(null); // Close Context Menu
+        setSelectedNodeId(node.id);
+        setMenu(null);
     }, []);
 
-    // 4. Canvas Click (Deselect)
     const onPaneClick = useCallback(() => {
         setSelectedNodeId(null);
         setMenu(null);
     }, []);
 
-    // 5. Right-Click Context Menu Logic
     const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: Node) => {
-            event.preventDefault(); // Stop default browser menu
-
+            event.preventDefault();
             if (!ref.current) return;
-
-            // Calculate position relative to container
             const pane = ref.current.getBoundingClientRect();
 
             setMenu({
                 id: node.id,
-                // Smart Positioning: keeps menu inside the screen
                 top: event.clientY < pane.height - 200 ? event.clientY - pane.top : undefined,
                 left: event.clientX < pane.width - 200 ? event.clientX - pane.left : undefined,
                 right: event.clientX >= pane.width - 200 ? pane.width - (event.clientX - pane.left) : undefined,
@@ -174,30 +248,24 @@ function Flow() {
         [setMenu]
     );
 
-    // --- CONTEXT MENU ACTIONS ---
-
-    // Action A: Configure -> Opens Properties Panel
     const handleContextMenuConfigure = (id: string) => {
-        setSelectedNodeId(id); // Simple: Select the node, Panel opens automatically
+        setSelectedNodeId(id);
     };
 
-    // Action B: View Code -> Zooms to Result Node
     const handleContextMenuViewCode = () => {
         fitView({
-            nodes: [{ id: '3' }], // Focus on the Result Node
-            duration: 800,        // Smooth animation
+            nodes: [{ id: '3' }],
+            duration: 800,
             padding: 0.2,
         });
         setSelectedNodeId('3');
     };
 
-    // Derived State for Panel
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
 
     return (
         <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
 
-            {/* Save Modal */}
             <SaveModal
                 isOpen={isSaveModalOpen}
                 onClose={() => setIsSaveModalOpen(false)}
@@ -205,7 +273,6 @@ function Flow() {
                 currentName={projectName}
             />
 
-            {/* Deletion Warning Toast */}
             {lastDeletedNode && (
                 <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce pointer-events-none">
                     <div className="bg-red-900/90 text-white px-4 py-2 rounded-lg border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center gap-3 backdrop-blur-md">
@@ -221,7 +288,6 @@ function Flow() {
             <Sidebar />
 
             <div className="flex-1 relative h-full">
-                {/* Background Gradient */}
                 <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.05)_0%,transparent_70%)]" />
 
                 <div className="relative z-20">
@@ -236,19 +302,16 @@ function Flow() {
                     />
                 </div>
 
-                {/* Properties Panel (Slides in when selectedNodeId is set) */}
                 <PropertiesPanel
                     selectedNode={selectedNode}
                     onClose={() => setSelectedNodeId(null)}
                 />
 
-                {/* Toolbar (Connected to Command Palette) */}
                 <EditorToolbar
                     onAutoLayout={triggerAutoLayout}
-                    onOpenCommandPalette={() => setIsCommandOpen(true)} // 👈 OPEN HANDLER
+                    onOpenCommandPalette={() => setIsCommandOpen(true)}
                 />
 
-                {/* Main React Flow Canvas */}
                 <div className="absolute inset-0 z-10">
                     <ReactFlow
                         nodes={nodes}
@@ -256,14 +319,25 @@ function Flow() {
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onNodesDelete={onNodesDelete}
-                        onConnect={onConnect}
+
+                        // 🚀 Using our Custom Wrapper for manual connections
+                        onConnect={onConnectWrapper}
+
                         onInit={setReactFlowInstance}
                         onDrop={onDrop}
                         onDragOver={onDragOver}
-                        onNodeClick={onNodeClick}             // Left Click -> Selects Node -> Opens Panel
-                        onNodeContextMenu={onNodeContextMenu} // Right Click -> Opens Custom Menu
-                        onPaneClick={onPaneClick}             // Canvas Click -> Deselects
+                        onNodeClick={onNodeClick}
+                        onNodeContextMenu={onNodeContextMenu}
+                        onPaneClick={onPaneClick}
                         nodeTypes={nodeTypes}
+
+                        // 🚀 Register Custom Edges & Defaults
+                        edgeTypes={edgeTypes}
+                        defaultEdgeOptions={{
+                            type: 'nebula',
+                            style: { stroke: '#334155', strokeWidth: 2 },
+                        }}
+
                         fitView
                         style={{ background: 'transparent' }}
                     >
@@ -271,14 +345,12 @@ function Flow() {
 
                         <NebulaMinimap />
 
-                        {/* 🚀 Command Palette (Controlled Component) */}
                         <CommandPalette
                            isOpen={isCommandOpen}
                            onClose={() => setIsCommandOpen(false)}
                            onToggle={() => setIsCommandOpen(prev => !prev)}
                         />
 
-                        {/* Custom Context Menu */}
                         {menu && (
                             <ContextMenu
                                 {...menu}
@@ -295,7 +367,6 @@ function Flow() {
     );
 }
 
-// Wrap in Provider to access React Flow hooks internally
 export default function FlowEditor() {
     return (
         <ReactFlowProvider>
