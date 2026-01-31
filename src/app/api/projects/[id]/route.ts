@@ -4,10 +4,11 @@ import clientPromise from '@/lib/mongodb'; // 👈 Imports your file
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    // In Next.js 15+, params is a Promise that must be awaited
+    const { id } = await params;
     const body = await request.json();
 
     // Destructure the fields we want to save
