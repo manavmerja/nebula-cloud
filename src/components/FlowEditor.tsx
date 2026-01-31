@@ -22,7 +22,7 @@ import { useProjectStorage } from '@/hooks/useProjectStorage';
 import { useNebulaEngine } from '@/hooks/useNebulaEngine';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useClipboard } from '@/hooks/useClipboard';
-import { useAutoSave } from '@/hooks/useAutoSave'; // 🟢 1. IMPORT HOOK
+import { useAutoSave } from '@/hooks/useAutoSave';
 import { useToast } from '@/context/ToastContext';
 
 // Components
@@ -40,6 +40,7 @@ import ContextMenu from './ContextMenu';
 import CommandPalette from './CommandPalette';
 import NebulaEdge from './edges/NebulaEdge';
 import FeatureGuide from './onboarding/FeatureGuide';
+import QuickConnectMenu from './QuickConnectMenu';
 
 const nodeTypes = {
     promptNode: PromptNode,
@@ -59,6 +60,13 @@ function Flow() {
     const [menu, setMenu] = useState<any>(null);
     const [isCommandOpen, setIsCommandOpen] = useState(false);
 
+    // 🟢 VISUAL FEEDBACK STATE
+    const [isShiftHeld, setIsShiftHeld] = useState(false);
+
+    // Quick Connect State
+    const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+    const connectStartRef = useRef<{ nodeId: string; handleId: string } | null>(null);
+
     // Flow State
     const {
         nodes, edges, setNodes, setEdges,
@@ -71,46 +79,32 @@ function Flow() {
         projectName, setProjectName
     } = useFlowState();
 
-    const { deleteElements, getNodes, fitView } = useReactFlow();
+    const { deleteElements, getNodes, fitView, project } = useReactFlow();
 
-    // AI Engine
+    // AI & Storage
     const { runArchitect, runFixer, syncVisualsToCode, triggerAutoLayout, aiLoading } = useNebulaEngine(
         setNodes, setEdges, updateResultNode
     );
-
-    // Manual Storage (Save Button)
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
         nodes, edges, setNodes, setEdges, setProjectName
     );
-
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
     const toast = useToast();
-
     const { undo, redo, takeSnapshot, canUndo, canRedo } = useUndoRedo();
     const { duplicate, copy, paste } = useClipboard();
 
-    // 🟢 2. ACTIVATE AUTO-SAVE
-    // We bundle the data we want to watch. Whenever 'nodes', 'edges', or 'projectName' change,
-    // the hook will start a 2-second timer. If no changes happen in that time, it saves.
-    const projectData = useMemo(() => ({
-        nodes,
-        edges,
-        name: projectName
-    }), [nodes, edges, projectName]);
-
+    // Auto Save
+    const projectData = useMemo(() => ({ nodes, edges, name: projectName }), [nodes, edges, projectName]);
     const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId, session, projectLoading);
 
-
     // --- EFFECTS ---
-    useEffect(() => {
-        if (projectId) loadProject(projectId);
-    }, [projectId]);
+    useEffect(() => { if (projectId) loadProject(projectId); }, [projectId]);
 
     const onSyncCode = useCallback(async (newCode: string) => { }, []);
 
-    // ... (Keep existing useEffects for Node logic) ...
+    // Sync AI Logic
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
@@ -128,6 +122,7 @@ function Flow() {
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
+    // Force Edge Types
     useEffect(() => {
         let hasChanges = false;
         const updatedEdges = edges.map((edge) => {
@@ -146,16 +141,85 @@ function Flow() {
         if (hasChanges) setEdges(updatedEdges);
     }, [edges, setEdges]);
 
+    // 🟢 1. CURSOR VISUAL FEEDBACK LOGIC
+    useEffect(() => {
+        const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftHeld(true); };
+        const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftHeld(false); };
+
+        window.addEventListener('keydown', down);
+        window.addEventListener('keyup', up);
+        return () => {
+            window.removeEventListener('keydown', down);
+            window.removeEventListener('keyup', up);
+        };
+    }, []);
+
     // --- HANDLERS ---
+
+    const onConnectStart = useCallback((_, { nodeId, handleId }) => {
+        connectStartRef.current = { nodeId: nodeId || "", handleId: handleId || "" };
+    }, []);
+
+    const onConnectEnd = useCallback(
+        (event: any) => {
+            if (!connectStartRef.current) return;
+            const target = event.target as HTMLElement;
+
+            // Magnet Logic (Drop on Node)
+            const targetNodeElement = target.closest('.react-flow__node');
+            if (targetNodeElement) {
+                const targetNodeId = targetNodeElement.getAttribute('data-id');
+                if (targetNodeId && targetNodeId !== connectStartRef.current.nodeId) {
+                    takeSnapshot();
+                    const newEdge: Edge = {
+                        id: `e-${connectStartRef.current.nodeId}-${targetNodeId}`,
+                        source: connectStartRef.current.nodeId,
+                        sourceHandle: connectStartRef.current.handleId,
+                        target: targetNodeId,
+                        type: 'nebula',
+                        data: { animated: true },
+                        style: { stroke: '#334155', strokeWidth: 2 },
+                    };
+                    setEdges((eds) => addEdge(newEdge, eds));
+                    toast.success("Connected!");
+                    connectStartRef.current = null;
+                    return;
+                }
+            }
+
+            // Menu Logic (Drop on Empty)
+            const targetIsPane = target.classList.contains('react-flow__pane');
+            if (targetIsPane) {
+                const { clientX, clientY } = event;
+                setMenuPosition({ x: clientX, y: clientY });
+            }
+        },
+        [setEdges, takeSnapshot, toast]
+    );
+
+    const handleConnectToExisting = useCallback(
+        (targetNodeId: string) => {
+            if (!connectStartRef.current) return;
+            takeSnapshot();
+            const newEdge: Edge = {
+                id: `e-${connectStartRef.current.nodeId}-${targetNodeId}`,
+                source: connectStartRef.current.nodeId,
+                sourceHandle: connectStartRef.current.handleId,
+                target: targetNodeId,
+                type: 'nebula',
+                data: { animated: true },
+                style: { stroke: '#334155', strokeWidth: 2 },
+            };
+            setEdges((eds) => addEdge(newEdge, eds));
+            setMenuPosition(null);
+            connectStartRef.current = null;
+        },
+        [setEdges, takeSnapshot]
+    );
+
     const onConnectWrapper = useCallback((params: Connection) => {
         takeSnapshot();
-        const newEdge = {
-            ...params,
-            type: 'nebula',
-            animated: false,
-            data: { animated: true },
-            style: { stroke: '#334155', strokeWidth: 2 },
-        };
+        const newEdge = { ...params, type: 'nebula', animated: false, data: { animated: true }, style: { stroke: '#334155', strokeWidth: 2 } };
         setEdges((eds) => addEdge(newEdge, eds));
     }, [setEdges, takeSnapshot]);
 
@@ -164,9 +228,7 @@ function Flow() {
         if (originalOnNodesDelete) originalOnNodesDelete(deleted);
     }, [takeSnapshot, originalOnNodesDelete]);
 
-    const onNodeDragStart = useCallback(() => {
-        takeSnapshot();
-    }, [takeSnapshot]);
+    const onNodeDragStart = useCallback(() => { takeSnapshot(); }, [takeSnapshot]);
 
     const handleCommandPaletteToggle = useCallback(() => {
         if (!isCommandOpen) takeSnapshot();
@@ -177,20 +239,13 @@ function Flow() {
         const currentNodes = getNodes();
         const inputNode = currentNodes.find(n => n.id === '1');
         const promptText = inputNode?.data?.text || "";
-
-        if (!promptText) {
-            toast.error("Please enter a prompt first!");
-            return;
-        }
+        if (!promptText) { toast.error("Please enter a prompt first!"); return; }
         takeSnapshot();
         runArchitect(promptText);
     };
 
     const handleSaveClick = () => {
-        if (!session) {
-            toast.error("Please login to save your project! 🔒");
-            return;
-        }
+        if (!session) { toast.error("Please login to save your project! 🔒"); return; }
         setIsSaveModalOpen(true);
     };
 
@@ -199,22 +254,35 @@ function Flow() {
         setIsSaveModalOpen(false);
     };
 
-    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
+    const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+        // Shift + Click Logic
+        if (event.shiftKey && selectedNodeId && selectedNodeId !== node.id) {
+            event.stopPropagation();
+            takeSnapshot();
+            const newEdge: Edge = {
+                id: `e-${selectedNodeId}-${node.id}`,
+                source: selectedNodeId,
+                target: node.id,
+                type: 'nebula',
+                data: { animated: true },
+                style: { stroke: '#334155', strokeWidth: 2 },
+            };
+            setEdges((eds) => addEdge(newEdge, eds));
+            toast.success("Linked!");
+            setSelectedNodeId(node.id);
+            return;
+        }
         setSelectedNodeId(node.id);
         setMenu(null);
-    }, []);
+    }, [selectedNodeId, setEdges, toast, takeSnapshot]);
 
-    const onPaneClick = useCallback(() => {
-        setSelectedNodeId(null);
-        setMenu(null);
-    }, []);
+    const onPaneClick = useCallback(() => { setSelectedNodeId(null); setMenu(null); }, []);
 
     const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: Node) => {
             event.preventDefault();
             if (!ref.current) return;
             const pane = ref.current.getBoundingClientRect();
-
             setMenu({
                 id: node.id,
                 top: event.clientY < pane.height - 200 ? event.clientY - pane.top : undefined,
@@ -222,29 +290,14 @@ function Flow() {
                 right: event.clientX >= pane.width - 200 ? pane.width - (event.clientX - pane.left) : undefined,
                 bottom: event.clientY >= pane.height - 200 ? pane.height - (event.clientY - pane.top) : undefined,
             });
-        },
-        [setMenu]
+        }, [setMenu]
     );
 
     const handleContextMenuConfigure = (id: string) => setSelectedNodeId(id);
-    const handleContextMenuViewCode = () => {
-        fitView({ nodes: [{ id: '3' }], duration: 800, padding: 0.2 });
-        setSelectedNodeId('3');
-    };
-    const handleContextMenuDelete = (id: string) => {
-        takeSnapshot();
-        const node = nodes.find(n => n.id === id);
-        if (node) deleteElements({ nodes: [node] });
-    };
-
-    const handleContextMenuDuplicate = () => {
-        takeSnapshot();
-        duplicate();
-    };
-
-    const handleContextMenuCopy = () => {
-        copy();
-    };
+    const handleContextMenuViewCode = () => { fitView({ nodes: [{ id: '3' }], duration: 800, padding: 0.2 }); setSelectedNodeId('3'); };
+    const handleContextMenuDelete = (id: string) => { takeSnapshot(); const node = nodes.find(n => n.id === id); if (node) deleteElements({ nodes: [node] }); };
+    const handleContextMenuDuplicate = () => { takeSnapshot(); duplicate(); };
+    const handleContextMenuCopy = () => { copy(); };
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
     const resultNode = nodes.find(n => n.id === '3');
@@ -253,26 +306,23 @@ function Flow() {
     return (
         <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
             <FeatureGuide />
-            <SaveModal
-                isOpen={isSaveModalOpen}
-                onClose={() => setIsSaveModalOpen(false)}
-                onConfirm={handleConfirmSave}
-                currentName={projectName}
+            <SaveModal isOpen={isSaveModalOpen} onClose={() => setIsSaveModalOpen(false)} onConfirm={handleConfirmSave} currentName={projectName} />
+
+            <QuickConnectMenu
+                position={menuPosition}
+                onClose={() => setMenuPosition(null)}
+                onSelect={handleConnectToExisting}
+                nodes={nodes}
+                sourceNodeId={connectStartRef.current?.nodeId || ""}
             />
 
             {lastDeletedNode && (
                 <div className="absolute bottom-8 right-8 z-50 animate-in slide-in-from-right-10 fade-in duration-300">
                     <div className="bg-red-950/90 text-white px-4 py-3 rounded-xl border border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center gap-4 backdrop-blur-md">
-                        <div className="p-2 bg-red-500/10 rounded-lg">
-                            <AlertTriangle className="text-red-400" size={20} />
-                        </div>
+                        <div className="p-2 bg-red-500/10 rounded-lg"> <AlertTriangle className="text-red-400" size={20} /> </div>
                         <div>
-                            <h4 className="text-sm font-bold text-red-100">
-                                Resource Deleted: {lastDeletedNode}
-                            </h4>
-                            <p className="text-[11px] text-red-300/80 mt-0.5">
-                                Don't forget to click <span className="text-white font-mono bg-red-500/20 px-1 rounded">Build Code</span> to sync.
-                            </p>
+                            <h4 className="text-sm font-bold text-red-100">Resource Deleted: {lastDeletedNode}</h4>
+                            <p className="text-[11px] text-red-300/80 mt-0.5">Don't forget to click <span className="text-white font-mono bg-red-500/20 px-1 rounded">Build Code</span> to sync.</p>
                         </div>
                     </div>
                 </div>
@@ -285,84 +335,48 @@ function Flow() {
 
                 <div className="relative z-20">
                     <Header
-                        session={session}
-                        title={projectName}
-                        setTitle={setProjectName}
-                        onSave={handleSaveClick}
-                        onRun={handleRunArchitect}
-                        saving={saving}
-                        loading={aiLoading || projectLoading}
-
-                        // 🟢 3. PASS AUTO-SAVE PROPS
-                        saveStatus={saveStatus}
-                        lastSavedTime={lastSavedTime}
+                        session={session} title={projectName} setTitle={setProjectName}
+                        onSave={handleSaveClick} onRun={handleRunArchitect}
+                        saving={saving} loading={aiLoading || projectLoading}
+                        saveStatus={saveStatus} lastSavedTime={lastSavedTime}
                     />
                 </div>
 
-                <PropertiesPanel
-                    selectedNode={selectedNode}
-                    terraformCode={fullTerraformCode}
-                    onClose={() => setSelectedNodeId(null)}
-                />
+                <PropertiesPanel selectedNode={selectedNode} terraformCode={fullTerraformCode} onClose={() => setSelectedNodeId(null)} />
 
                 <EditorToolbar
-                    onAutoLayout={() => {
-                        takeSnapshot();
-                        triggerAutoLayout();
-                    }}
+                    onAutoLayout={() => { takeSnapshot(); triggerAutoLayout(); }}
                     onOpenCommandPalette={handleCommandPaletteToggle}
-                    onUndo={undo}
-                    onRedo={redo}
-                    canUndo={canUndo}
-                    canRedo={canRedo}
+                    onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
                 />
 
-                <div className="absolute inset-0 z-10">
+                {/* 🟢 2. APPLY CURSOR CLASS */}
+                <div className={`absolute inset-0 z-10 ${isShiftHeld ? 'cursor-crosshair' : ''}`}>
                     <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
+                        nodes={nodes} edges={edges}
+                        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
                         onNodesDelete={onNodesDeleteWrapper}
+
                         onConnect={onConnectWrapper}
-                        onNodeDragStart={onNodeDragStart}
+                        onConnectStart={onConnectStart}
+                        onConnectEnd={onConnectEnd}
 
                         onInit={setReactFlowInstance}
-                        onDrop={onDrop}
-                        onDragOver={onDragOver}
+                        onDrop={onDrop} onDragOver={onDragOver}
                         onNodeClick={onNodeClick}
                         onNodeContextMenu={onNodeContextMenu}
                         onPaneClick={onPaneClick}
+                        onNodeDragStart={onNodeDragStart}
 
                         nodeTypes={nodeTypes}
                         edgeTypes={edgeTypes}
-                        defaultEdgeOptions={{
-                            type: 'nebula',
-                            style: { stroke: '#334155', strokeWidth: 2 },
-                        }}
-                        fitView
-                        style={{ background: 'transparent' }}
+                        defaultEdgeOptions={{ type: 'nebula', style: { stroke: '#334155', strokeWidth: 2 } }}
+                        fitView style={{ background: 'transparent' }}
                     >
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
                         <NebulaMinimap />
-
-                        <CommandPalette
-                            isOpen={isCommandOpen}
-                            onClose={() => setIsCommandOpen(false)}
-                            onToggle={handleCommandPaletteToggle}
-                        />
-
-                        {menu && (
-                            <ContextMenu
-                                {...menu}
-                                onClose={() => setMenu(null)}
-                                onConfigure={handleContextMenuConfigure}
-                                onViewCode={handleContextMenuViewCode}
-                                onDelete={() => handleContextMenuDelete(menu.id)}
-                                onDuplicate={handleContextMenuDuplicate}
-                                onCopy={handleContextMenuCopy}
-                            />
-                        )}
+                        <CommandPalette isOpen={isCommandOpen} onClose={() => setIsCommandOpen(false)} onToggle={handleCommandPaletteToggle} />
+                        {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} onConfigure={handleContextMenuConfigure} onViewCode={handleContextMenuViewCode} onDelete={() => handleContextMenuDelete(menu.id)} onDuplicate={handleContextMenuDuplicate} onCopy={handleContextMenuCopy} />}
                     </ReactFlow>
                 </div>
             </div>

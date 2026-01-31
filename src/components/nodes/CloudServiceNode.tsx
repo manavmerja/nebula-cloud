@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position, useReactFlow, NodeProps } from 'reactflow';
-import { Trash2, AlertTriangle } from 'lucide-react'; 
+import { Trash2, AlertTriangle } from 'lucide-react';
 import { getCloudIconPath } from '@/utils/iconMap';
 
 function CloudServiceNode({ id, data, selected }: NodeProps) {
@@ -23,7 +23,7 @@ function CloudServiceNode({ id, data, selected }: NodeProps) {
       )}
 
       <div className={`relative flex flex-col items-center justify-center p-3 rounded-xl min-w-[120px] transition-all duration-300 border backdrop-blur-md ${isError ? 'bg-red-950/40 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.4)] animate-pulse-slow' : selected ? 'bg-gray-800/90 border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.3)]' : 'bg-gray-900/90 border-gray-700 hover:border-gray-500 shadow-xl' }`}>
-        
+
         <button onClick={(e) => { e.stopPropagation(); deleteNode(); }} className="absolute -top-2 -right-2 bg-gray-700 hover:bg-red-500 text-white p-1.5 rounded-full shadow-md opacity-0 scale-75 translate-y-2 group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 transition-all duration-200 z-40">
           <Trash2 size={12} />
         </button>

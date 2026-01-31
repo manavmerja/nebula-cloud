@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useReactFlow } from "reactflow";
 import {
   Search, Server, Database, Globe, Cloud, Box,
   Cpu, HardDrive, Shield, Activity, Zap, Layers,
-  Container, Lock, Radio, GitBranch, Key
+  Container, Lock, Radio, GitBranch, Key, Link as LinkIcon
 } from "lucide-react";
 
 // --- 1. FULL SERVICE CONFIGURATION ---
-
+// These labels match what 'getCloudIconPath' expects in your CloudServiceNode
 const COMMANDS = [
   // --- Compute ---
   { id: "ec2", label: "EC2 Instance", category: "Compute", type: "cloudNode", data: { label: "EC2 Instance", serviceType: "compute" }, icon: Cpu },
@@ -106,7 +106,7 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (filteredCommands[selectedIndex]) {
-            executeCommand(filteredCommands[selectedIndex]);
+          executeCommand(filteredCommands[selectedIndex]);
         }
       } else if (e.key === "Escape") {
         onClose();
@@ -121,16 +121,16 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
   const executeCommand = useCallback((item: typeof COMMANDS[0]) => {
     if (!item) return;
 
-    // Center Logic (Approximate)
+    // Place node near the center (offset slightly to avoid stacking)
     const randomOffset = () => (Math.random() - 0.5) * 100;
     const newNode = {
       id: `${item.id}-${Date.now()}`,
-      type: item.type,
+      type: item.type, // 'cloudNode'
       position: {
         x: 250 + randomOffset(),
         y: 250 + randomOffset()
       },
-      data: { ...item.data },
+      data: { ...item.data }, // Passes 'label' which getCloudIconPath uses
     };
 
     addNodes(newNode);
@@ -207,9 +207,15 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-2 bg-black/20 border-t border-gray-800 text-[10px] text-gray-500 flex justify-between">
-            <span>Nebula Command</span>
+        {/* Footer with Smart Connect Hint */}
+        <div className="px-4 py-2 bg-black/20 border-t border-gray-800 text-[10px] text-gray-500 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+                <span className="bg-gray-800/50 px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">SHIFT</span>
+                <span>+</span>
+                <span className="bg-gray-800/50 px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">CLICK</span>
+                <span className="text-gray-600">= Connect</span>
+            </div>
+
             <div className="flex gap-3">
                 <span>Navigate <b className="text-gray-400">↑↓</b></span>
                 <span>Select <b className="text-gray-400">↵</b></span>
