@@ -107,11 +107,13 @@ export default function FeatureGuide() {
   }, [updateSpotlight]);
 
   const startTour = () => setStatus('tour');
-  const skipTour = () => {
+ const skipTour = () => {
     setStatus('complete');
     localStorage.setItem('hasSeenGuide', 'true');
-  };
 
+    // THIS LINE to notify the Minimap to close
+    window.dispatchEvent(new Event('nebula-tour-completed'));
+  };
   const handleNext = () => {
     if (stepIndex < TOUR_STEPS.length - 1) {
       setStepIndex(prev => prev + 1);

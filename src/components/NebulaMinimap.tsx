@@ -1,16 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MiniMap, useStore, ReactFlowState } from 'reactflow';
 import { Map, X } from 'lucide-react';
 
+// Selector to get node count (kept for future logic, but we won't hide the map based on it anymore)
 const nodeCountSelector = (state: ReactFlowState) => state.nodeInternals.size;
 
 export default function NebulaMinimap() {
   const [isOpen, setIsOpen] = useState(true);
   const nodeCount = useStore(nodeCountSelector);
 
-  // 🔴 REMOVED: if (nodeCount < 4) return null;
-  // Why? Because the "Nav System" tour step needs this element to exist
-  // immediately, even if the canvas is empty.
+  // 1. 🚀 AUTO-MINIMIZE LOGIC
+  // This listens for the "nebula-tour-completed" signal from FeatureGuide.tsx
+  useEffect(() => {
+    const handleTourEnd = () => {
+      setIsOpen(false); // Close the map when tour is done
+    };
+
+    window.addEventListener('nebula-tour-completed', handleTourEnd);
+    return () => window.removeEventListener('nebula-tour-completed', handleTourEnd);
+  }, []);
 
   // 🎨 Node Styling
   const getNodeColor = (n: any) => {
@@ -33,7 +41,7 @@ export default function NebulaMinimap() {
   if (!isOpen) {
     return (
       <button
-        id="nebula-minimap" // ✅ ID present here
+        id="nebula-minimap" // 2. ✅ ID ADDED HERE (For Tour Spotlight)
         onClick={() => setIsOpen(true)}
         className="absolute bottom-6 right-6 z-40 p-3 bg-[#151921]/90 backdrop-blur-md border border-gray-800 rounded-full shadow-2xl hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all group"
         title="Open Navigation"
@@ -46,7 +54,7 @@ export default function NebulaMinimap() {
   // --- OPEN STATE ---
   return (
     <div
-        id="nebula-minimap" // ✅ ADDED ID HERE (Crucial for Tour)
+        id="nebula-minimap" // 3. ✅ ID ADDED HERE (For Tour Spotlight)
         className="absolute bottom-6 right-6 z-40 w-[240px] h-[160px] bg-[#0f1115] border border-gray-800 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 group flex flex-col"
     >
 
@@ -78,6 +86,7 @@ export default function NebulaMinimap() {
         </div>
       </div>
 
+      {/* Decorative Corners */}
       <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-cyan-500/30 rounded-bl-lg pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan-500/30 rounded-br-lg pointer-events-none" />
     </div>
