@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
-import { MiniMap } from 'reactflow';
+import { MiniMap, useStore, ReactFlowState } from 'reactflow';
 import { Map, X } from 'lucide-react';
+
+
+    // 2. Define this selector OUTSIDE  component
+const nodeCountSelector = (state: ReactFlowState) => state.nodeInternals.size;
 
 export default function NebulaMinimap() {
   const [isOpen, setIsOpen] = useState(true);
+
+  const nodeCount = useStore(nodeCountSelector);
+  if (nodeCount < 4) return null;
 
   // 🎨 Node Styling - Increased opacity for visibility
   const getNodeColor = (n: any) => {
@@ -21,6 +28,7 @@ export default function NebulaMinimap() {
     if (n.data?.status === 'error') return '#ef4444';
     return '#3b82f6';
   };
+
 
   // --- CLOSED STATE ---
   if (!isOpen) {

@@ -231,7 +231,7 @@ function Flow() {
     };
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
-    
+
     // 👇👇👇 GET TERRAFORM CODE FROM NODE 3 (ResultNode) 👇👇👇
     const resultNode = nodes.find(n => n.id === '3');
     const fullTerraformCode = resultNode?.data?.terraformCode || '';
@@ -246,12 +246,23 @@ function Flow() {
             />
 
             {lastDeletedNode && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce pointer-events-none">
-                    <div className="bg-red-900/90 text-white px-4 py-2 rounded-lg border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center gap-3 backdrop-blur-md">
-                        <AlertTriangle className="text-red-400" size={20} />
+                // 🚀 UPDATED: Moved to Bottom Right & changed animation to Slide-In
+                <div className="absolute bottom-8 right-8 z-50 animate-in slide-in-from-right-10 fade-in duration-300">
+                    <div className="bg-red-950/90 text-white px-4 py-3 rounded-xl border border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center gap-4 backdrop-blur-md">
+
+                        {/* Icon Box */}
+                        <div className="p-2 bg-red-500/10 rounded-lg">
+                            <AlertTriangle className="text-red-400" size={20} />
+                        </div>
+
+                        {/* Text Content */}
                         <div>
-                            <p className="text-sm font-bold">Resource Deleted: {lastDeletedNode}</p>
-                            <p className="text-[10px] text-red-200">Click "Build Code" to update Terraform.</p>
+                            <h4 className="text-sm font-bold text-red-100">
+                                Resource Deleted: {lastDeletedNode}
+                            </h4>
+                            <p className="text-[11px] text-red-300/80 mt-0.5">
+                                Don't forget to click <span className="text-white font-mono bg-red-500/20 px-1 rounded">Build Code</span> to sync.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -277,7 +288,7 @@ function Flow() {
                 {/* 👇👇👇 PASS CODE TO PROPERTIES PANEL 👇👇👇 */}
                 <PropertiesPanel
                     selectedNode={selectedNode}
-                    terraformCode={fullTerraformCode} 
+                    terraformCode={fullTerraformCode}
                     onClose={() => setSelectedNodeId(null)}
                 />
 
