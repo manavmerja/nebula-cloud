@@ -5,45 +5,53 @@ import { Node, Edge } from 'reactflow';
 interface ProjectData {
   nodes: Node[];
   edges: Edge[];
-  title: string;
+  name: string;
 }
 
-export function useAutoSave(data: ProjectData, projectId: string) {
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+export function useAutoSave(data: ProjectData, projectId: string | null) {
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('unsaved');
   const [lastSavedTime, setLastSavedTime] = useState<Date>(new Date());
 
-  // The actual API call
+  // 1. The actual API call (Debounced)
   const saveToDatabase = useCallback(async (currentData: ProjectData) => {
+    if (!projectId) return; // Don't save if no project ID
+
     try {
       setSaveStatus('saving');
 
-      // Replace this with your actual API call (Supabase/Firebase/NextAuth)
+      // 🟢 REPLACE this with your actual API endpoint
+      // Example: await supabase.from('projects').update({ content: currentData }).eq('id', projectId)
       const response = await fetch(`/api/projects/${projectId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentData),
       });
 
-      if (!response.ok) throw new Error('Save failed');
+      if (!response.ok) throw new Error('Auto-save failed');
 
       setSaveStatus('saved');
       setLastSavedTime(new Date());
     } catch (error) {
-      console.error(error);
+      console.error("Auto-save error:", error);
       setSaveStatus('error');
     }
   }, [projectId]);
 
-  // The Debounce Logic
+  // 2. The Watcher (Effect)
   useEffect(() => {
-    // 1. Set a timer to save after 2 seconds of inactivity
+    if (!projectId) return;
+
+    // Reset status to 'saving' (or 'unsaved') immediately when data changes
+    setSaveStatus('saving');
+
+    // Wait 2 seconds before actually sending the request
     const timer = setTimeout(() => {
       saveToDatabase(data);
     }, 2000);
 
-    // 2. If 'data' changes before 2s, React cancels the old timer
+    // If data changes again within 2s, cancel the previous timer
     return () => clearTimeout(timer);
-  }, [data, saveToDatabase]);
+  }, [data, saveToDatabase, projectId]);
 
   return { saveStatus, lastSavedTime };
 }

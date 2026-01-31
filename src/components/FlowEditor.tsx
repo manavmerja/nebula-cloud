@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useCallback, useState, useRef } from 'react';
+import React, { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import ReactFlow, {
     ReactFlowProvider,
     Background,
@@ -22,6 +22,7 @@ import { useProjectStorage } from '@/hooks/useProjectStorage';
 import { useNebulaEngine } from '@/hooks/useNebulaEngine';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useClipboard } from '@/hooks/useClipboard';
+import { useAutoSave } from '@/hooks/useAutoSave'; // 🟢 1. IMPORT HOOK
 import { useToast } from '@/context/ToastContext';
 
 // Components
@@ -77,6 +78,7 @@ function Flow() {
         setNodes, setEdges, updateResultNode
     );
 
+    // Manual Storage (Save Button)
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
         nodes, edges, setNodes, setEdges, setProjectName
     );
@@ -89,6 +91,18 @@ function Flow() {
     const { undo, redo, takeSnapshot, canUndo, canRedo } = useUndoRedo();
     const { duplicate, copy, paste } = useClipboard();
 
+    // 🟢 2. ACTIVATE AUTO-SAVE
+    // We bundle the data we want to watch. Whenever 'nodes', 'edges', or 'projectName' change,
+    // the hook will start a 2-second timer. If no changes happen in that time, it saves.
+    const projectData = useMemo(() => ({
+        nodes,
+        edges,
+        name: projectName
+    }), [nodes, edges, projectName]);
+
+    const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId);
+
+
     // --- EFFECTS ---
     useEffect(() => {
         if (projectId) loadProject(projectId);
@@ -96,6 +110,7 @@ function Flow() {
 
     const onSyncCode = useCallback(async (newCode: string) => {}, []);
 
+    // ... (Keep existing useEffects for Node logic) ...
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
@@ -232,8 +247,6 @@ function Flow() {
     };
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
-
-    // 👇👇👇 GET TERRAFORM CODE FROM NODE 3 (ResultNode) 👇👇👇
     const resultNode = nodes.find(n => n.id === '3');
     const fullTerraformCode = resultNode?.data?.terraformCode || '';
 
@@ -248,16 +261,11 @@ function Flow() {
             />
 
             {lastDeletedNode && (
-                // 🚀 UPDATED: Moved to Bottom Right & changed animation to Slide-In
                 <div className="absolute bottom-8 right-8 z-50 animate-in slide-in-from-right-10 fade-in duration-300">
                     <div className="bg-red-950/90 text-white px-4 py-3 rounded-xl border border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.4)] flex items-center gap-4 backdrop-blur-md">
-
-                        {/* Icon Box */}
                         <div className="p-2 bg-red-500/10 rounded-lg">
                             <AlertTriangle className="text-red-400" size={20} />
                         </div>
-
-                        {/* Text Content */}
                         <div>
                             <h4 className="text-sm font-bold text-red-100">
                                 Resource Deleted: {lastDeletedNode}
@@ -284,10 +292,13 @@ function Flow() {
                         onRun={handleRunArchitect}
                         saving={saving}
                         loading={aiLoading || projectLoading}
+
+                        // 🟢 3. PASS AUTO-SAVE PROPS
+                        saveStatus={saveStatus}
+                        lastSavedTime={lastSavedTime}
                     />
                 </div>
 
-                {/* 👇👇👇 PASS CODE TO PROPERTIES PANEL 👇👇👇 */}
                 <PropertiesPanel
                     selectedNode={selectedNode}
                     terraformCode={fullTerraformCode}
@@ -336,9 +347,9 @@ function Flow() {
                         <NebulaMinimap />
 
                         <CommandPalette
-                           isOpen={isCommandOpen}
-                           onClose={() => setIsCommandOpen(false)}
-                           onToggle={handleCommandPaletteToggle}
+                            isOpen={isCommandOpen}
+                            onClose={() => setIsCommandOpen(false)}
+                            onToggle={handleCommandPaletteToggle}
                         />
 
                         {menu && (
