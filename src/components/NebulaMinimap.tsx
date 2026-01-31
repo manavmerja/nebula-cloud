@@ -2,17 +2,17 @@ import React, { useState } from 'react';
 import { MiniMap, useStore, ReactFlowState } from 'reactflow';
 import { Map, X } from 'lucide-react';
 
-
-    // 2. Define this selector OUTSIDE  component
 const nodeCountSelector = (state: ReactFlowState) => state.nodeInternals.size;
 
 export default function NebulaMinimap() {
   const [isOpen, setIsOpen] = useState(true);
-
   const nodeCount = useStore(nodeCountSelector);
-  if (nodeCount < 4) return null;
 
-  // 🎨 Node Styling - Increased opacity for visibility
+  // 🔴 REMOVED: if (nodeCount < 4) return null;
+  // Why? Because the "Nav System" tour step needs this element to exist
+  // immediately, even if the canvas is empty.
+
+  // 🎨 Node Styling
   const getNodeColor = (n: any) => {
     if (n.type === 'promptNode') return 'rgba(6, 182, 212, 0.8)';
     if (n.type === 'aiNode') return 'rgba(139, 92, 246, 0.8)';
@@ -29,11 +29,11 @@ export default function NebulaMinimap() {
     return '#3b82f6';
   };
 
-
   // --- CLOSED STATE ---
   if (!isOpen) {
     return (
       <button
+        id="nebula-minimap" // ✅ ID present here
         onClick={() => setIsOpen(true)}
         className="absolute bottom-6 right-6 z-40 p-3 bg-[#151921]/90 backdrop-blur-md border border-gray-800 rounded-full shadow-2xl hover:border-cyan-500/50 text-gray-400 hover:text-cyan-400 transition-all group"
         title="Open Navigation"
@@ -45,7 +45,10 @@ export default function NebulaMinimap() {
 
   // --- OPEN STATE ---
   return (
-    <div className="absolute bottom-6 right-6 z-40 w-[240px] h-[160px] bg-[#0f1115] border border-gray-800 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 group flex flex-col">
+    <div
+        id="nebula-minimap" // ✅ ADDED ID HERE (Crucial for Tour)
+        className="absolute bottom-6 right-6 z-40 w-[240px] h-[160px] bg-[#0f1115] border border-gray-800 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-300 group flex flex-col"
+    >
 
       {/* Header */}
       <div className="h-8 bg-black/40 border-b border-white/5 flex items-center justify-between px-3 shrink-0 z-50">
@@ -58,17 +61,9 @@ export default function NebulaMinimap() {
         </button>
       </div>
 
-      {/* Map Container - Wrapper for proper positioning */}
+      {/* Map Container */}
       <div className="flex-1 relative w-full h-full bg-[#0a0a0f]">
-        <div
-          className="absolute inset-0"
-          style={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
-            overflow: 'hidden'
-          }}
-        >
+        <div className="absolute inset-0 overflow-hidden">
           <MiniMap
             nodeColor={getNodeColor}
             nodeStrokeColor={getNodeStrokeColor}
@@ -78,9 +73,7 @@ export default function NebulaMinimap() {
             zoomable
             pannable
             className="nebula-minimap"
-            style={{
-              backgroundColor: 'transparent',
-            }}
+            style={{ backgroundColor: 'transparent' }}
           />
         </div>
       </div>

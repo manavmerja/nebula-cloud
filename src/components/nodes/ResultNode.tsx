@@ -134,7 +134,9 @@ function ResultNode({ data }: ResultNodeProps) {
   };
 
   return (
-    <div className={`rounded-xl border bg-black/90 shadow-2xl w-[600px] overflow-hidden flex flex-col h-[600px] font-sans transition-all duration-500 ${hasIssues ? 'border-red-500/50 shadow-red-900/20' : 'border-green-500/50'}`}>
+    <div
+    id="nebula-result-node"
+    className={`rounded-xl border bg-black/90 shadow-2xl w-[600px] overflow-hidden flex flex-col h-[600px] font-sans transition-all duration-500 ${hasIssues ? 'border-red-500/50 shadow-red-900/20' : 'border-green-500/50'}`}>
 
       {/* HEADER */}
       <div className={`flex items-center justify-between px-4 py-3 border-b ${hasIssues ? 'bg-red-950/20 border-red-500/20' : 'bg-[#111] border-green-500/20'}`}>

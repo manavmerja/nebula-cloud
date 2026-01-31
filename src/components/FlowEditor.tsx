@@ -38,6 +38,7 @@ import NebulaMinimap from './NebulaMinimap';
 import ContextMenu from './ContextMenu';
 import CommandPalette from './CommandPalette';
 import NebulaEdge from './edges/NebulaEdge';
+import FeatureGuide from './onboarding/FeatureGuide';
 
 const nodeTypes = {
     promptNode: PromptNode,
@@ -238,6 +239,7 @@ function Flow() {
 
     return (
         <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
+            <FeatureGuide />
             <SaveModal
                 isOpen={isSaveModalOpen}
                 onClose={() => setIsSaveModalOpen(false)}

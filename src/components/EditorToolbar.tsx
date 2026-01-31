@@ -3,7 +3,8 @@
 import React, { useState, useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
 import {
-    Plus, Minus, Maximize, LayoutGrid, Search, Camera, Undo, Redo
+    Plus, Minus, Maximize, LayoutGrid, Search, Camera, Undo, Redo,
+    MousePointer2, Hand // Optional: If you want to add mode switching later
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import { useToast } from '@/context/ToastContext';
@@ -11,9 +12,9 @@ import { useToast } from '@/context/ToastContext';
 interface EditorToolbarProps {
     onAutoLayout?: () => void;
     onOpenCommandPalette: () => void;
-    // 🚀 New Props
     onUndo?: () => void;
     onRedo?: () => void;
+    onOpenTemplates?: () => void; // If you added this
     canUndo?: boolean;
     canRedo?: boolean;
 }
@@ -48,10 +49,10 @@ export default function EditorToolbar({
                 });
 
                 const a = document.createElement('a');
-                a.setAttribute('download', 'nebula-architecture.png');
+                a.setAttribute('download', `nebula-arch-${Date.now()}.png`);
                 a.setAttribute('href', dataUrl);
                 a.click();
-                toast.success("Snapshot Saved to Downloads! 🖼️");
+                toast.success("Snapshot Saved! 📸");
             } catch (err) {
                 console.error(err);
                 toast.error("Failed to capture screenshot.");
@@ -63,56 +64,87 @@ export default function EditorToolbar({
 
     return (
         <>
+            {/* Flash Effect Overlay */}
             <div
                 className={`fixed inset-0 z-[100] bg-white pointer-events-none transition-opacity duration-500 ease-out ${
                     isFlashing ? 'opacity-80' : 'opacity-0'
                 }`}
             />
 
-            <aside className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center gap-4">
+            {/* 🚀 UNIFIED DOCK CONTAINER */}
+            <aside
+            id="nebula-toolbar"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex items-center justify-center">
 
-                {/* Group 1: History Controls */}
-                <div className="bg-[#151921]/90 backdrop-blur-md border border-gray-800 rounded-full shadow-2xl px-2 py-1.5 flex items-center gap-1">
-                    <ToolbarButton
-                        icon={Undo}
-                        label="Undo (Ctrl+Z)"
-                        onClick={onUndo || (() => {})}
-                        disabled={!canUndo}
-                    />
-                    <ToolbarButton
-                        icon={Redo}
-                        label="Redo (Ctrl+Y)"
-                        onClick={onRedo || (() => {})}
-                        disabled={!canRedo}
-                    />
-                </div>
+                <div className="bg-[#151921]/95 backdrop-blur-xl border border-gray-800/80 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] p-1.5 flex items-center gap-1 ring-1 ring-white/5">
 
-                {/* Group 2: View Controls */}
-                <div className="bg-[#151921]/90 backdrop-blur-md border border-gray-800 rounded-full shadow-2xl px-2 py-1.5 flex items-center gap-1">
-                    <ToolbarButton icon={Minus} label="Zoom Out" onClick={() => zoomOut({ duration: 300 })} />
-                    <ToolbarButton icon={Plus} label="Zoom In" onClick={() => zoomIn({ duration: 300 })} />
+                    {/* SECTION 1: HISTORY (Safety) */}
+                    <div className="flex items-center gap-0.5">
+                        <ToolbarButton
+                            icon={Undo}
+                            label="Undo"
+                            shortcut="Ctrl+Z"
+                            onClick={onUndo || (() => {})}
+                            disabled={!canUndo}
+                        />
+                        <ToolbarButton
+                            icon={Redo}
+                            label="Redo"
+                            shortcut="Ctrl+Y"
+                            onClick={onRedo || (() => {})}
+                            disabled={!canRedo}
+                        />
+                    </div>
 
-                    <div className="h-4 w-px bg-gray-700/50 mx-1" />
+                    {/* DIVIDER */}
+                    <div className="w-px h-5 bg-gray-700/50 mx-1.5" />
 
-                    <ToolbarButton icon={Maximize} label="Fit View" onClick={() => fitView({ duration: 500, padding: 0.2 })} />
-                </div>
+                    {/* SECTION 2: ACTIONS (The "Doing" Tools) */}
+                    <div className="flex items-center gap-0.5 border-cyan-500">
+                        <ToolbarButton
+                            icon={Search}
+                            label="Search"
+                            shortcut="Ctrl+K"
+                            onClick={onOpenCommandPalette}
+                            // active // Optional: Highlight if active
+                        />
+                        {onAutoLayout && (
+                            <ToolbarButton
+                                icon={LayoutGrid}
+                                label="Auto Layout"
+                                onClick={onAutoLayout}
+                            />
+                        )}
+                        <ToolbarButton
+                            icon={Camera}
+                            label="Export PNG"
+                            onClick={handleDownload}
+                        />
+                    </div>
 
-                {/* Group 3: Actions */}
-                <div className="bg-[#151921]/90 backdrop-blur-md border border-gray-800 rounded-full shadow-2xl px-2 py-1.5 flex items-center gap-1">
-                    <ToolbarButton
-                        icon={Search}
-                        label="Search Resources (Ctrl + K)"
-                        onClick={onOpenCommandPalette}
-                        active
-                    />
+                    {/* DIVIDER */}
+                    <div className="w-px h-5 bg-gray-700/50 mx-1.5" />
 
-                    <div className="h-4 w-px bg-gray-700/50 mx-1" />
+                    {/* SECTION 3: VIEW (Navigation) */}
+                    <div className="flex items-center gap-0.5">
+                        <ToolbarButton
+                            icon={Minus}
+                            label="Zoom Out"
+                            onClick={() => zoomOut({ duration: 300 })}
+                        />
+                         {/* Optional: Display Zoom Level here if you want */}
+                        <ToolbarButton
+                            icon={Plus}
+                            label="Zoom In"
+                            onClick={() => zoomIn({ duration: 300 })}
+                        />
+                        <ToolbarButton
+                            icon={Maximize}
+                            label="Fit View"
+                            onClick={() => fitView({ duration: 500, padding: 0.2 })}
+                        />
+                    </div>
 
-                    {onAutoLayout && (
-                        <ToolbarButton icon={LayoutGrid} label="Auto Layout" onClick={onAutoLayout} />
-                    )}
-
-                    <ToolbarButton icon={Camera} label="Export Image" onClick={handleDownload} />
                 </div>
 
             </aside>
@@ -120,34 +152,43 @@ export default function EditorToolbar({
     );
 }
 
-// Helper Component
+// Helper Component for consistent buttons
 interface ToolbarButtonProps {
     icon: any;
     label: string;
+    shortcut?: string;
     onClick: () => void;
     active?: boolean;
     disabled?: boolean;
 }
 
-const ToolbarButton = ({ icon: Icon, label, onClick, active, disabled }: ToolbarButtonProps) => (
+const ToolbarButton = ({ icon: Icon, label, shortcut, onClick, active, disabled }: ToolbarButtonProps) => (
     <button
         onClick={onClick}
         disabled={disabled}
-        className={`p-2 rounded-lg transition-all group relative flex items-center justify-center
+        className={`relative group p-2 rounded-xl transition-all duration-200 flex items-center justify-center
             ${disabled
                 ? "text-gray-700 cursor-not-allowed opacity-50"
                 : active
-                    ? "bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20"
-                    : "text-gray-400 hover:text-white hover:bg-white/10"
+                    ? "bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.2)] ring-1 ring-cyan-500/30"
+                    : "text-gray-400 hover:text-white hover:bg-white/10 hover:scale-105"
             }
         `}
-        title={label}
     >
-        <Icon size={18} />
+        <Icon size={18} strokeWidth={2} />
+
+        {/* Tooltip (Appears on Hover) */}
         {!disabled && (
-            <span className="absolute bottom-full mb-2 px-2 py-1 bg-black border border-gray-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-xl">
-                {label}
-            </span>
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 px-2.5 py-1.5 bg-[#0d1117] border border-gray-700 text-gray-200 text-[11px] font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap shadow-xl z-50 flex gap-2 items-center scale-95 group-hover:scale-100 origin-bottom">
+                <span>{label}</span>
+                {shortcut && (
+                    <span className="bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded text-[9px] font-mono border border-gray-700">
+                        {shortcut}
+                    </span>
+                )}
+                {/* Little arrow pointing down */}
+                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#0d1117] border-b border-r border-gray-700 rotate-45" />
+            </div>
         )}
     </button>
 );

@@ -68,8 +68,6 @@ export default function Sidebar() {
   const [isHovered, setIsHovered] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({ 'Compute': true });
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const flatList = useRef<HTMLDivElement[]>([]);
 
   // Filter Logic
   const filtered = useMemo(() => {
@@ -91,14 +89,23 @@ export default function Sidebar() {
     setFavorites((f) => f.includes(label) ? f.filter((x) => x !== label) : [...f, label]);
   };
 
+  // 🟢 UX FIX: Reset search when sidebar closes
+  useEffect(() => {
+      if (!isHovered) {
+          // Optional: We could clear search, or just collapse categories
+          // setSearch('');
+      }
+  }, [isHovered]);
+
   return (
     <motion.aside
+      id="nebula-sidebar"
       initial={{ width: '4rem' }}
       animate={{ width: isHovered ? '18rem' : '4rem' }}
-      transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }} // Made slightly snappier
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group"
+      className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group select-none"
     >
 
       {/* --- PROFESSIONAL HEADER --- */}
@@ -108,10 +115,7 @@ export default function Sidebar() {
 
           {/* 1. Logo Container with Ambient Glow */}
           <div className="relative group/logo min-w-[36px] cursor-pointer">
-            {/* The Blur Effect */}
             <div className="absolute -inset-2 bg-cyan-500/20 rounded-full blur-md opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500" />
-
-            {/* The Icon Box */}
             <div className="relative w-9 h-9 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700/50 flex items-center justify-center shadow-xl group-hover/logo:border-cyan-500/30 transition-colors">
                <LayoutGrid size={18} className="text-cyan-400 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" />
             </div>
@@ -123,12 +127,9 @@ export default function Sidebar() {
             transition={{ duration: 0.2 }}
             className="flex flex-col justify-center"
           >
-            {/* Title with Gradient Text */}
             <h2 className="text-sm font-bold text-white tracking-wide leading-tight">
               Nebula<span className="text-cyan-400">.ai</span>
             </h2>
-
-            {/* Subtitle with Status Dot */}
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -139,18 +140,20 @@ export default function Sidebar() {
               </span>
             </div>
           </motion.div>
-
         </div>
       </div>
 
-      {/* --- SEARCH (Shrink protected) --- */}
+      {/* --- SEARCH --- */}
       <div className="px-3 py-4 shrink-0">
         <div className={`relative flex items-center ${isHovered ? 'bg-black/40' : 'bg-transparent'} rounded-lg transition-colors border border-transparent ${isHovered ? 'border-gray-700' : ''}`}>
           <Search className={`min-w-[20px] ml-2 ${isHovered ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
           <motion.input
             layout
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+                setSearch(e.target.value);
+                if (!isHovered) setIsHovered(true); // 🟢 Auto-expand on typing
+            }}
             placeholder="Search..."
             className={`
               w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-600 ml-2 h-9
@@ -160,10 +163,9 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* --- SCROLL AREA (The Fix is Here) --- */}
+      {/* --- SCROLL AREA --- */}
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent"
-        // 🚨 CRITICAL FIX: Stop the canvas from stealing the scroll event
         onWheel={(e) => e.stopPropagation()}
       >
 
@@ -175,8 +177,8 @@ export default function Sidebar() {
             </h3>
             <div className="space-y-1">
               {favorites.map((label) => (
-                <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10">
-                  <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4" />
+                <div key={label} draggable onDragStart={(e) => onDragStart(e, label)} className="flex items-center gap-3 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/20 cursor-grab hover:bg-yellow-500/10 active:cursor-grabbing">
+                  <img src={getCloudIconPath(label)} alt={label} className="w-4 h-4 object-contain" />
                   <span className="text-xs text-gray-300 truncate">{label}</span>
                 </div>
               ))}
@@ -190,8 +192,13 @@ export default function Sidebar() {
           <div key={section.category} className="mb-1">
             <button
               onClick={() => {
-                if (!isHovered) setIsHovered(true);
-                setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
+                // 🟢 UX FIX: If collapsed, expand sidebar first
+                if (!isHovered) {
+                    setIsHovered(true);
+                    setOpenCategories((c) => ({ ...c, [section.category]: true }));
+                } else {
+                    setOpenCategories((c) => ({ ...c, [section.category]: !c[section.category] }));
+                }
               }}
               className={`
                 w-full flex items-center gap-3 p-2 rounded-lg transition-all
@@ -200,7 +207,7 @@ export default function Sidebar() {
               title={!isHovered ? section.category : ''}
             >
               <div className="flex items-center gap-3">
-                <div className={`text-gray-400 ${openCategories[section.category] ? 'text-cyan-400' : ''}`}>
+                <div className={`text-gray-400 ${openCategories[section.category] && isHovered ? 'text-cyan-400' : ''}`}>
                   {categoryIcons[section.category] || <Box size={20} />}
                 </div>
                 {isHovered && (
@@ -214,7 +221,7 @@ export default function Sidebar() {
                 )}
               </div>
               {isHovered && (
-                <motion.div animate={{ rotate: openCategories[section.category] ? -90 : 0 }}>
+                <motion.div animate={{ rotate: openCategories[section.category] ? -180 : 0 }}> {/* 🟢 Changed rotation to -180 for standard chevron behavior */}
                   <ChevronDown size={14} className="text-gray-600" />
                 </motion.div>
               )}
@@ -238,14 +245,14 @@ export default function Sidebar() {
                         className="flex items-center gap-3 p-1.5 rounded-md cursor-grab active:cursor-grabbing group hover:bg-white/[0.03] hover:translate-x-1 transition-all duration-200"
                       >
                         <div className="w-5 h-5 min-w-[20px] flex items-center justify-center bg-gray-900 rounded border border-gray-700">
-                          <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} />
+                          <img src={getCloudIconPath(label)} className="w-3.5 h-3.5 object-contain" draggable={false} alt={label} />
                         </div>
                         <span className="text-xs text-gray-400 group-hover:text-white transition-colors truncate">
                           {label}
                         </span>
                         <Star
                           size={10}
-                          className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600'}`}
+                          className={`ml-auto opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity ${favorites.includes(label) ? 'text-yellow-400 opacity-100' : 'text-gray-600 hover:text-yellow-400'}`}
                           onClick={(e) => { e.stopPropagation(); toggleFavorite(label); }}
                         />
                       </div>

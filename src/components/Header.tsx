@@ -83,7 +83,9 @@ export default function Header({
                 </div>
 
                 {/* 2. Run Architect Button */}
+                <div id="nebula-header-run">
                 <RunArchitectButton onRun={onRun} loading={loading} />
+                </div>
 
                 <div className="h-6 w-px bg-gray-800 mx-2" />
 
