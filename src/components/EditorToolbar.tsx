@@ -100,8 +100,7 @@ export default function EditorToolbar({
                     <div className="w-px h-5 bg-gray-700/50 mx-1.5" />
 
                     {/* SECTION 2: ACTIONS (The "Doing" Tools) */}
-                    <div className="flex items-center gap-0.5 border-cyan-500">
-                        <ToolbarButton
+                    <div className="flex items-center gap-0.5 border border-cyan-500 border-opacity-30 rounded-lg p-1">                        <ToolbarButton
                             icon={Search}
                             label="Search"
                             shortcut="Ctrl+K"

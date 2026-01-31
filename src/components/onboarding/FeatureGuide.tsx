@@ -231,8 +231,8 @@ export default function FeatureGuide() {
                 ${TOUR_STEPS[stepIndex].position === 'top' ? '-bottom-1.5 left-1/2 -translate-x-1/2 border-b border-r' : ''}
                 ${TOUR_STEPS[stepIndex].position === 'bottom' ? '-top-1.5 left-1/2 -translate-x-1/2 border-t border-l' : ''}
                 ${TOUR_STEPS[stepIndex].position === 'right' ? '-left-1.5 top-1/2 -translate-y-1/2 border-b border-l' : ''}
-            `} />
-          </div>
+                ${TOUR_STEPS[stepIndex].position === 'left' ? '-right-1.5 top-1/2 -translate-y-1/2 border-t border-r' : ''}
+            `} />          </div>
         </>
       )}
     </div>,
