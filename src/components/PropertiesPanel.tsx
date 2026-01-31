@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
     X, Settings, Code, Tag, Database, Cpu, Globe,
-    ShieldCheck, DollarSign, Activity, FileText, Lock, AlertTriangle, CheckCircle
+    ShieldCheck, FileText, Lock, AlertTriangle, CheckCircle // ❌ Removed Activity, DollarSign
 } from 'lucide-react';
 import { Node } from 'reactflow';
 
 interface PropertiesPanelProps {
   selectedNode: Node | null;
+  terraformCode?: string;
   onClose: () => void;
 }
 
-// CONFIG: Nodes that should NOT trigger the panel
 const IGNORED_NODE_TYPES = ['promptNode', 'aiNode', 'resultNode'];
 
-export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPanelProps) {
+export default function PropertiesPanel({ selectedNode, terraformCode = '', onClose }: PropertiesPanelProps) {
   const [label, setLabel] = useState('');
-  const [activeTab, setActiveTab] = useState<'general' | 'code' | 'cost' | 'security' | 'logs'>('general');
+  
+  // 👇 ONLY 3 TABS NOW (Clean & Real)
+  const [activeTab, setActiveTab] = useState<'general' | 'code' | 'security'>('general');
 
   useEffect(() => {
     if (selectedNode) {
@@ -28,7 +30,31 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
       return null;
   }
 
-  // --- HELPER: Get Icon based on label ---
+  // --- HELPER: Extract Resource Code ---
+  const getResourceCode = () => {
+      if (!terraformCode) return "# No Terraform code generated yet.";
+      
+      const nodeLabel = label.toLowerCase();
+      let resourceType = "";
+
+      if (nodeLabel.includes('vpc')) resourceType = "aws_vpc";
+      else if (nodeLabel.includes('subnet')) resourceType = "aws_subnet";
+      else if (nodeLabel.includes('gateway')) resourceType = "aws_internet_gateway";
+      else if (nodeLabel.includes('security')) resourceType = "aws_security_group";
+      else if (nodeLabel.includes('ec2') || nodeLabel.includes('instance') || nodeLabel.includes('server')) resourceType = "aws_instance";
+      else if (nodeLabel.includes('s3') || nodeLabel.includes('bucket')) resourceType = "aws_s3_bucket";
+      else if (nodeLabel.includes('db') || nodeLabel.includes('rds')) resourceType = "aws_db_instance";
+      else if (nodeLabel.includes('efs')) resourceType = "aws_efs";
+      
+      if (resourceType) {
+          const regex = new RegExp(`resource\\s+"${resourceType}"\\s+"[^"]+"\\s+\\{[\\s\\S]*?\\}`, 'i');
+          const match = terraformCode.match(regex);
+          if (match) return match[0];
+      }
+
+      return `# Showing context for ${label}...\n# Full code is available in the editor panel.`;
+  };
+
   const getIcon = () => {
     const type = selectedNode.data?.label?.toLowerCase() || '';
     if (type.includes('db') || type.includes('rds') || type.includes('storage'))
@@ -40,13 +66,11 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
     return <Globe size={18} className="text-cyan-400" />;
   };
 
-  // --- 🆕 HELPER: Dynamic Security Rules ---
   const renderSecurityContent = () => {
     const name = label.toLowerCase();
     const hasError = selectedNode.data?.status === 'error';
     const errorMessage = selectedNode.data?.errorMessage;
 
-    // 1. If there is a REAL error from the AI Agent, show it first
     if (hasError && errorMessage) {
         return (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
@@ -65,8 +89,7 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
         );
     }
 
-    // 2. If no error, show realistic "Safe" rules based on Node Type
-    if (name.includes('db') || name.includes('rds') || name.includes('postgres') || name.includes('mysql')) {
+    if (name.includes('db') || name.includes('rds')) {
         return (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
                 <div className="p-3 bg-green-900/10 border border-green-500/20 rounded-lg flex items-center gap-3">
@@ -76,72 +99,28 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
                          <p className="text-[10px] text-green-300/70">Not accessible from public internet.</p>
                      </div>
                 </div>
-                <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex items-center gap-3">
-                     <ShieldCheck className="text-blue-400" size={16} />
-                     <div>
-                         <p className="text-xs font-bold text-blue-200">Port Restricted</p>
-                         <p className="text-[10px] text-blue-300/70">
-                            Allowed: Port {name.includes('postgres') ? '5432' : '3306'} (App Server Only)
-                         </p>
-                     </div>
-                </div>
-                 <div className="flex items-center gap-2 px-2">
-                    <CheckCircle size={12} className="text-gray-500" />
-                    <span className="text-[10px] text-gray-500">Storage Encryption (KMS) Enabled</span>
-                </div>
             </div>
         );
     }
 
-    if (name.includes('s3') || name.includes('bucket')) {
-        return (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-                <div className="p-3 bg-green-900/10 border border-green-500/20 rounded-lg flex items-center gap-3">
-                     <Lock className="text-green-400" size={16} />
-                     <div>
-                         <p className="text-xs font-bold text-green-200">Block Public Access</p>
-                         <p className="text-[10px] text-green-300/70">Enabled (True)</p>
-                     </div>
-                </div>
-                <div className="p-3 bg-purple-900/10 border border-purple-500/20 rounded-lg flex items-center gap-3">
-                     <ShieldCheck className="text-purple-400" size={16} />
-                     <div>
-                         <p className="text-xs font-bold text-purple-200">Server-Side Encryption</p>
-                         <p className="text-[10px] text-purple-300/70">AES-256 Enabled</p>
-                     </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Default (Web Servers / Load Balancers / Generic)
     return (
         <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
             <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex items-center gap-3">
                     <ShieldCheck className="text-blue-400" size={16} />
                     <div>
-                        <p className="text-xs font-bold text-blue-200">Security Group: Web-Tier</p>
-                        <p className="text-[10px] text-blue-300/70">Inbound: Port 443 (0.0.0.0/0)</p>
-                    </div>
-            </div>
-            <div className="p-3 bg-yellow-900/10 border border-yellow-500/20 rounded-lg flex items-center gap-3">
-                    <Activity className="text-yellow-400" size={16} />
-                    <div>
-                        <p className="text-xs font-bold text-yellow-200">SSH Access</p>
-                        <p className="text-[10px] text-yellow-300/70">Restricted to Bastion Host only.</p>
+                        <p className="text-xs font-bold text-blue-200">Standard Security Group</p>
+                        <p className="text-[10px] text-blue-300/70">Inbound rules managed by Terraform.</p>
                     </div>
             </div>
         </div>
     );
   };
 
-  // --- TABS CONTENT ---
   const renderContent = () => {
     switch (activeTab) {
         case 'general':
             return (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    {/* Name Input */}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 text-gray-400">
                             <Tag size={12} />
@@ -154,20 +133,18 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
                             placeholder="Resource Name"
                         />
                     </div>
-                    {/* ID Readonly */}
                     <div className="space-y-2">
                         <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Unique ID</label>
                         <div className="p-2.5 bg-black/40 rounded-lg border border-gray-800 text-xs text-gray-400 font-mono break-all select-all hover:border-gray-700 transition-colors cursor-text">
                             {selectedNode.id}
                         </div>
                     </div>
-                    {/* Status Badge */}
                     <div className="space-y-2">
                         <label className="text-[10px] uppercase tracking-wider text-gray-500 font-bold ml-1">Status</label>
                         <div className="flex items-center gap-2">
                             <span className={`flex h-2 w-2 rounded-full ${selectedNode.data?.status === 'error' ? 'bg-red-500 shadow-red-500/60' : 'bg-green-500 shadow-green-500/60'} shadow-[0_0_8px]`}></span>
                             <span className={`text-xs font-medium ${selectedNode.data?.status === 'error' ? 'text-red-400' : 'text-green-400'}`}>
-                                {selectedNode.data?.status === 'error' ? 'Security Issues Detected' : 'Provisioned & Active'}
+                                {selectedNode.data?.status === 'error' ? 'Security Issues Detected' : 'Ready to Deploy'}
                             </span>
                         </div>
                     </div>
@@ -181,68 +158,16 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
                         <span className="text-[10px] uppercase font-bold text-gray-400">Terraform Configuration</span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded">HCL</span>
                     </div>
-                    <div className="p-3 bg-[#0A0C10] rounded-lg border border-gray-800 text-[10px] text-gray-400 font-mono leading-relaxed overflow-x-auto">
-                        <div className="opacity-50 mb-2"># Auto-generated resource</div>
-                        <span className="text-purple-400">resource</span> <span className="text-green-400">"aws_resource"</span> <span className="text-yellow-400">"main"</span> {'{'} <br/>
-                        &nbsp;&nbsp;name &nbsp;= <span className="text-green-400">"{label || 'unnamed'}"</span><br/>
-                        &nbsp;&nbsp;env &nbsp;&nbsp;= <span className="text-green-400">"production"</span><br/>
-                        &nbsp;&nbsp;tags = {'{'} <br/>
-                        &nbsp;&nbsp;&nbsp;&nbsp;Project = <span className="text-green-400">"Nebula"</span><br/>
-                        &nbsp;&nbsp;{'}'}<br/>
-                        {'}'}
-                    </div>
-                </div>
-            );
-
-        case 'cost':
-            return (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="p-4 bg-gradient-to-br from-green-900/20 to-black border border-green-500/20 rounded-lg flex items-center justify-between">
-                        <div>
-                            <p className="text-[10px] text-gray-400 uppercase">Est. Monthly Cost</p>
-                            <p className="text-xl font-bold text-white">$42.50</p>
-                        </div>
-                        <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400">
-                            <DollarSign size={16} />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <p className="text-[10px] uppercase font-bold text-gray-500">Breakdown</p>
-                        <div className="flex justify-between text-xs text-gray-300 border-b border-gray-800 pb-2">
-                            <span>Compute (730h)</span>
-                            <span>$28.80</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-300 border-b border-gray-800 pb-2">
-                            <span>Storage (100GB)</span>
-                            <span>$10.00</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-300 pb-2">
-                            <span>Data Transfer</span>
-                            <span>$3.70</span>
-                        </div>
+                    <div className="p-3 bg-[#0A0C10] rounded-lg border border-gray-800 text-[10px] text-gray-400 font-mono leading-relaxed overflow-x-auto whitespace-pre custom-scrollbar">
+                        {getResourceCode()}
                     </div>
                 </div>
             );
 
         case 'security':
-            return renderSecurityContent(); // 👈 Using new dynamic helper
-
-        case 'logs':
-             return (
-                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                     <div className="space-y-3 relative before:absolute before:left-1.5 before:top-2 before:bottom-0 before:w-px before:bg-gray-800">
-                         {[1,2,3].map((_, i) => (
-                             <div key={i} className="flex gap-3 relative">
-                                 <div className="w-3 h-3 rounded-full bg-gray-800 border border-gray-600 z-10 mt-1" />
-                                 <div>
-                                     <p className="text-[10px] text-gray-400">{new Date().toLocaleTimeString()}</p>
-                                     <p className="text-xs text-gray-200">Resource state changed to <span className="text-green-400">Running</span></p>
-                                 </div>
-                             </div>
-                         ))}
-                     </div>
-                 </div>
-             );
+            return renderSecurityContent();
+            
+        // ❌ LOGS & COST REMOVED
     }
   };
 
@@ -268,14 +193,12 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
         </button>
       </div>
 
-      {/* --- TABS NAVIGATION --- */}
+      {/* --- TABS NAVIGATION (Cleaned) --- */}
       <div className="flex items-center px-2 py-2 gap-1 border-b border-white/5 bg-black/20 overflow-x-auto no-scrollbar">
          {[
              { id: 'general', icon: Settings, label: 'General' },
              { id: 'code', icon: Code, label: 'Code' },
-             { id: 'cost', icon: DollarSign, label: 'Cost' },
              { id: 'security', icon: ShieldCheck, label: 'Security' },
-             { id: 'logs', icon: Activity, label: 'Logs' },
          ].map((tab) => (
              <button
                 key={tab.id}
@@ -292,7 +215,6 @@ export default function PropertiesPanel({ selectedNode, onClose }: PropertiesPan
          ))}
       </div>
 
-      {/* --- CONTENT AREA --- */}
       <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
          {renderContent()}
       </div>

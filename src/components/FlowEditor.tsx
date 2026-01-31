@@ -69,7 +69,6 @@ function Flow() {
         projectName, setProjectName
     } = useFlowState();
 
-    // React Flow Internals
     const { deleteElements, getNodes, fitView } = useReactFlow();
 
     // AI Engine
@@ -77,32 +76,25 @@ function Flow() {
         setNodes, setEdges, updateResultNode
     );
 
-    // Storage
     const { saveProject, loadProject, saving, loading: projectLoading } = useProjectStorage(
         nodes, edges, setNodes, setEdges, setProjectName
     );
 
-    // Utilities
     const { data: session } = useSession();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('id');
     const toast = useToast();
 
-    // Features
     const { undo, redo, takeSnapshot, canUndo, canRedo } = useUndoRedo();
     const { duplicate, copy, paste } = useClipboard();
 
     // --- EFFECTS ---
-
     useEffect(() => {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    const onSyncCode = useCallback(async (newCode: string) => {
-         // console.log("Legacy Sync triggered", newCode);
-    }, []);
+    const onSyncCode = useCallback(async (newCode: string) => {}, []);
 
-    // Wire up Result Node
     useEffect(() => {
         setNodes((nds) => nds.map((node) => {
             if (node.id === '3') {
@@ -120,7 +112,6 @@ function Flow() {
         }));
     }, [setNodes, onSyncCode, runFixer, syncVisualsToCode]);
 
-    // Edge Enforcer
     useEffect(() => {
         let hasChanges = false;
         const updatedEdges = edges.map((edge) => {
@@ -139,9 +130,7 @@ function Flow() {
         if (hasChanges) setEdges(updatedEdges);
     }, [edges, setEdges]);
 
-
     // --- HANDLERS ---
-
     const onConnectWrapper = useCallback((params: Connection) => {
         takeSnapshot();
         const newEdge = {
@@ -167,9 +156,6 @@ function Flow() {
         if (!isCommandOpen) takeSnapshot();
         setIsCommandOpen(prev => !prev);
     }, [isCommandOpen, takeSnapshot]);
-
-
-    // --- ACTION HANDLERS ---
 
     const handleRunArchitect = () => {
         const currentNodes = getNodes();
@@ -197,7 +183,6 @@ function Flow() {
         setIsSaveModalOpen(false);
     };
 
-    // Node Click Handlers
     const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
         setSelectedNodeId(node.id);
         setMenu(null);
@@ -225,7 +210,6 @@ function Flow() {
         [setMenu]
     );
 
-    // Context Menu Actions
     const handleContextMenuConfigure = (id: string) => setSelectedNodeId(id);
     const handleContextMenuViewCode = () => {
         fitView({ nodes: [{ id: '3' }], duration: 800, padding: 0.2 });
@@ -237,19 +221,20 @@ function Flow() {
         if (node) deleteElements({ nodes: [node] });
     };
 
-    // 🚀 NEW: Context Menu Copy/Duplicate
     const handleContextMenuDuplicate = () => {
         takeSnapshot();
         duplicate();
     };
 
-    // 👇 Added this handler
     const handleContextMenuCopy = () => {
         copy();
-        // Optional: toast.success("Copied to clipboard!");
     };
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
+    
+    // 👇👇👇 GET TERRAFORM CODE FROM NODE 3 (ResultNode) 👇👇👇
+    const resultNode = nodes.find(n => n.id === '3');
+    const fullTerraformCode = resultNode?.data?.terraformCode || '';
 
     return (
         <div ref={ref} className="flex w-full h-screen bg-black overflow-hidden relative">
@@ -289,8 +274,10 @@ function Flow() {
                     />
                 </div>
 
+                {/* 👇👇👇 PASS CODE TO PROPERTIES PANEL 👇👇👇 */}
                 <PropertiesPanel
                     selectedNode={selectedNode}
+                    terraformCode={fullTerraformCode} 
                     onClose={() => setSelectedNodeId(null)}
                 />
 
@@ -349,7 +336,7 @@ function Flow() {
                                 onViewCode={handleContextMenuViewCode}
                                 onDelete={() => handleContextMenuDelete(menu.id)}
                                 onDuplicate={handleContextMenuDuplicate}
-                                onCopy={handleContextMenuCopy} // 👈 Added
+                                onCopy={handleContextMenuCopy}
                             />
                         )}
                     </ReactFlow>
