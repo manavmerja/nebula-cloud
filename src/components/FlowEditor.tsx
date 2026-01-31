@@ -100,7 +100,7 @@ function Flow() {
         name: projectName
     }), [nodes, edges, projectName]);
 
-    const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId, session);
+    const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId, session, projectLoading);
 
 
     // --- EFFECTS ---

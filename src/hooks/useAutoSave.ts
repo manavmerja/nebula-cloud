@@ -11,7 +11,8 @@ interface ProjectData {
 export function useAutoSave(
   data: ProjectData,
   projectId: string | null,
-  session: any = null // Add session parameter for authentication check
+  session: any = null, // Add session parameter for authentication check
+  isLoading: boolean = false // Add loading flag to prevent save during load
 ) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('unsaved');
   const [lastSavedTime, setLastSavedTime] = useState<Date>(new Date());
@@ -19,6 +20,7 @@ export function useAutoSave(
   // Track if this is the initial mount to prevent auto-save on load
   const hasInitialized = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const wasLoadingRef = useRef(false); // Track loading state changes
 
   // 1. The actual API call (Debounced)
   const saveToDatabase = useCallback(async (currentData: ProjectData) => {
@@ -63,6 +65,24 @@ export function useAutoSave(
     // Don't auto-save if no project ID
     if (!projectId) return;
 
+    // Skip auto-save while loading (project is being loaded from server)
+    if (isLoading) {
+      console.log('[Auto-Save] Skipped: Project is loading...');
+      wasLoadingRef.current = true;
+      // Clear any pending save timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      return;
+    }
+
+    // If we just finished loading, reset initialization to skip this update
+    if (wasLoadingRef.current) {
+      wasLoadingRef.current = false;
+      hasInitialized.current = false;
+      console.log('[Auto-Save] Project load complete - resetting initialization');
+    }
+
     // Skip auto-save on initial mount/load
     if (!hasInitialized.current) {
       hasInitialized.current = true;
@@ -90,11 +110,12 @@ export function useAutoSave(
         clearTimeout(timerRef.current);
       }
     };
-  }, [data, projectId, saveToDatabase]);
+  }, [data, projectId, isLoading, saveToDatabase]);
 
   // Reset initialization flag when project changes
   useEffect(() => {
     hasInitialized.current = false;
+    wasLoadingRef.current = false;
   }, [projectId]);
 
   return { saveStatus, lastSavedTime };
