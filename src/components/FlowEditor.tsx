@@ -100,7 +100,7 @@ function Flow() {
         name: projectName
     }), [nodes, edges, projectName]);
 
-    const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId);
+    const { saveStatus, lastSavedTime } = useAutoSave(projectData, projectId, session);
 
 
     // --- EFFECTS ---
@@ -108,7 +108,7 @@ function Flow() {
         if (projectId) loadProject(projectId);
     }, [projectId]);
 
-    const onSyncCode = useCallback(async (newCode: string) => {}, []);
+    const onSyncCode = useCallback(async (newCode: string) => { }, []);
 
     // ... (Keep existing useEffects for Node logic) ...
     useEffect(() => {
