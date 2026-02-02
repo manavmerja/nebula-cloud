@@ -66,3 +66,34 @@ Edit Code -> Click Sync -> Agent C (Parser) -> Visual Update.
 "Create a VPC with a public subnet and an EC2 instance."
 
 "Create a VPC with 2 public subnets, an Internet Gateway, and an EC2 instance in each subnet."
+
+
+<<<<<<<<<<<<<<<<<,------------->>>>>>>>>>>>>>>.
+
+PS D:\PROJECT\nebula-cloud> git pull 
+Updating 3e6a690..69f2687
+Fast-forward
+ package-lock.json                          |   7 +-
+ package.json                               |   1 +
+ src/app/api/projects/[id]/route.ts         |  64 +++++++
+ src/app/globals.css                        |  56 ++++++
+ src/components/CommandPalette.tsx          |  26 +--
+ src/components/EditorToolbar.tsx           | 154 ++++++++++------
+ src/components/FlowEditor.tsx              | 280 ++++++++++++++++-------------
+ src/components/Header.tsx                  |  81 ++++++---
+ src/components/NebulaMinimap.tsx           |  44 +++--
+ src/components/QuickConnectMenu.tsx        |  85 +++++++++
+ src/components/Sidebar.tsx                 |  53 +++---
+ src/components/nodes/CloudServiceNode.tsx  |   4 +-
+ src/components/nodes/PromptNode.tsx        |   4 +-
+ src/components/nodes/ResultNode.tsx        |   4 +-
+ src/components/onboarding/FeatureGuide.tsx | 243 +++++++++++++++++++++++++
+ src/components/ui/ContextHint.tsx          |  21 +++
+ src/hooks/useAutoSave.ts                   | 122 +++++++++++++
+ 17 files changed, 993 insertions(+), 256 deletions(-)
+ create mode 100644 src/app/api/projects/[id]/route.ts
+ create mode 100644 src/components/QuickConnectMenu.tsx
+ create mode 100644 src/components/onboarding/FeatureGuide.tsx
+ create mode 100644 src/components/ui/ContextHint.tsx
+ create mode 100644 src/hooks/useAutoSave.ts
+PS D:\PROJECT\nebula-cloud> 

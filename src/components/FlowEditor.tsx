@@ -57,7 +57,13 @@ function Flow() {
     const ref = useRef<HTMLDivElement>(null);
     const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-    const [menu, setMenu] = useState<any>(null);
+    const [menu, setMenu] = useState<{
+        id: string;
+        top?: number;
+        left?: number;
+        right?: number;
+        bottom?: number;
+    } | null>(null);
     const [isCommandOpen, setIsCommandOpen] = useState(false);
 
     // 🟢 VISUAL FEEDBACK STATE
@@ -156,12 +162,12 @@ function Flow() {
 
     // --- HANDLERS ---
 
-    const onConnectStart = useCallback((_, { nodeId, handleId }) => {
+    const onConnectStart = useCallback((_: React.MouseEvent | React.TouchEvent, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
         connectStartRef.current = { nodeId: nodeId || "", handleId: handleId || "" };
     }, []);
 
     const onConnectEnd = useCallback(
-        (event: any) => {
+        (event: MouseEvent | TouchEvent) => {
             if (!connectStartRef.current) return;
             const target = event.target as HTMLElement;
 
@@ -190,7 +196,8 @@ function Flow() {
             // Menu Logic (Drop on Empty)
             const targetIsPane = target.classList.contains('react-flow__pane');
             if (targetIsPane) {
-                const { clientX, clientY } = event;
+                const clientX = 'clientX' in event ? event.clientX : (event as TouchEvent).changedTouches[0].clientX;
+                const clientY = 'clientY' in event ? event.clientY : (event as TouchEvent).changedTouches[0].clientY;
                 setMenuPosition({ x: clientX, y: clientY });
             }
         },
