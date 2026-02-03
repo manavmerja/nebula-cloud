@@ -156,26 +156,39 @@ export function useNebulaEngine(
 
         return nodes.map(node => {
             const lowerLabel = (node.data.label || "").toLowerCase();
-            const lowerType = (node.data.serviceType || "").toLowerCase();
+            // const lowerType = (node.data.serviceType || "").toLowerCase(); // Optional usage
 
             // Find if any error matches this node
             const issue = auditReport.find((err: any) => {
                 const msg = err.message.toLowerCase();
                 
-                // Smart Matching Logic
+                // 🧠 Smart Matching Logic v2
                 const isDatabase = (lowerLabel.includes('rds') || lowerLabel.includes('database')) && (msg.includes('rds') || msg.includes('database'));
                 const isS3 = (lowerLabel.includes('s3') || lowerLabel.includes('bucket')) && (msg.includes('s3') || msg.includes('bucket') || msg.includes('public read'));
-                const isSG = (lowerLabel.includes('security group')) && (msg.includes('0.0.0.0/0') || msg.includes('security group'));
+                
+                // 👇 Improved SG Matching: Matches "0.0.0.0/0", "security group", OR "ssh"
+                const isSG = (lowerLabel.includes('security group')) && (
+                    msg.includes('0.0.0.0/0') || 
+                    msg.includes('security group') || 
+                    msg.includes('ssh') ||
+                    msg.includes('port')
+                );
+
                 const isInstance = (lowerLabel.includes('instance') || lowerLabel.includes('ec2')) && (msg.includes('instance') || msg.includes('cost'));
 
                 return isDatabase || isS3 || isSG || isInstance;
             });
 
             if (issue) {
+                // Determine Status Color based on Severity
+                const isWarning = issue.severity === 'WARNING';
+                
                 return {
                     ...node,
                     data: { 
                         ...node.data, 
+                        // Note: Currently UI only supports 'error' (Red) or 'active' (Green).
+                        // Future: Add 'warning' status for Yellow.
                         status: 'error', 
                         errorMessage: issue.message 
                     }
