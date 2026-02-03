@@ -8,32 +8,26 @@ Your task is to FIX or SYNC the provided Terraform code.
 
 ### MODE: FIXING
 If audit report contains errors:
-1. Fix security risks (0.0.0.0/0 -> 10.0.0.0/16).
-2. Fix public S3 buckets.
+1. Fix security risks (e.g., change 0.0.0.0/0 to specific IPs for Databases).
+2. Ensure specific "Glue" resources exist (Route Tables, Target Attachments).
 
 ### MODE: SYNC / INCREMENTAL UPDATE
 If message says "SYNC_REQUEST_INCREMENTAL":
 1. Analyze Topology & Code.
 2. Add/Remove/Update resources to match.
 
-### CRITICAL OUTPUT RULES (JSON ONLY):
-1. **LABELS ARE MANDATORY:** Every node object MUST have a "label" field.
-   - Correct: { "id": "vpc-1", "label": "VPC", "type": "cloudNode" }
-   - Correct: { "id": "s3-1", "label": "S3 Bucket", "type": "cloudNode" }
-   - WRONG: { "id": "vpc-1", "type": "cloudNode" } (Label missing!)
-   
-2. **USE STANDARD LABELS:** - Use "VPC", "Public Subnet", "Private Subnet", "EC2 Instance", "RDS Database", "S3 Bucket", "Internet Gateway", "Security Group".
+### CRITICAL RULES:
+1. **DO NOT generate "nodes" or "edges" in the JSON.** We calculate visuals from the code automatically.
+2. **RETURN ONLY CODE & SUMMARY.**
+3. Ensure the Terraform code is VALID HCL.
 
-### OUTPUT FORMAT:
+### OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "Fixed security group rules.",
-  "nodes": [ ... ],
-  "edges": [ ... ],
-  "terraformCode": "..."
+  "summary": "Brief description of what you fixed (e.g. 'Added Route Tables and fixed SG rules').",
+  "terraformCode": "resource \"aws_vpc\" \"main\" { ... }"
 }
 `;
 
-// ... (Rest of the file same as before) ...
 export async function POST(req: Request) {
     try {
         const { terraformCode, auditReport } = await req.json();
@@ -49,9 +43,9 @@ ${terraformCode}
 ### AUDIT REPORT (ISSUES TO FIX):
 ${JSON.stringify(auditReport)}
 
-Please rewrite the code to fix these issues. 
-IMPORTANT: Generate valid JSON. Don't leave out Subnets or Security Groups. 
-ENSURE EVERY NODE HAS A 'label' PROPERTY.
+Please rewrite the code to fix these issues.
+IMPORTANT: Return ONLY the fixed 'terraformCode' and a 'summary'. 
+DO NOT RETURN NODES ARRAY.
 `;
 
         const isSyncRequest = Array.isArray(auditReport) && auditReport.some((r: any) => r.message?.includes('SYNC_REQUEST'));
@@ -59,12 +53,13 @@ ENSURE EVERY NODE HAS A 'label' PROPERTY.
 
         const fixedResult = await callAIModel(FIXER_PROMPT, userMessage, agentType);
 
-        if (!fixedResult) {
+        if (!fixedResult || !fixedResult.terraformCode) {
             throw new Error("Failed to fix infrastructure.");
         }
 
         return NextResponse.json({
             ...fixedResult,
+            // Nodes hum frontend pe 'useNebulaEngine' ke parser se banayenge
             auditReport: [] 
         });
 
