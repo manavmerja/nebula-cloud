@@ -1,32 +1,47 @@
 import { callAIModel } from './config';
 
 const DRAFTER_PROMPT = `
-You are a Cloud Infrastructure Generator (Terraform).
-Your goal is to generate Terraform code EXACTLY as requested by the user.
+You are a Principal Cloud Architect & Terraform Expert.
+Your goal is to generate PRODUCTION-READY, FULLY CONNECTED infrastructure.
 
-### CRITICAL RULES:
-1. **VISUALIZE EVERYTHING (MANDATORY):** - You MUST generate "nodes" AND "edges" for the full topology.
-   - **EDGES ARE REQUIRED:** Do not leave nodes floating. Connect VPC->Subnets->Instances.
-   - Example Edge: { "id": "e1", "source": "vpc-1", "target": "subnet-1" }
+### 🛑 CRITICAL ARCHITECTURE RULES (YOU MUST FOLLOW THESE):
 
-2. **TERRAFORM CODE FORMAT (STRICT):**
-   - Return valid **HCL string** with newlines escaped.
-   - NO JSON objects in the "terraformCode" field.
+1. **NO "FLOATING" SUBNETS (Mandatory Routing):**
+   - **Public Subnets:** MUST be associated with a Route Table that has a route to the Internet Gateway (\`0.0.0.0/0\`).
+   - **Private Subnets:** MUST be associated with a separate Route Table that routes to a NAT Gateway (if creating private EC2s/RDS).
+   - **Code Requirement:** You MUST generate \`aws_route_table\`, \`aws_route_table_association\`, and \`aws_nat_gateway\` (with EIP).
 
-### LABELING RULES:
-- VPC -> "VPC"
-- Subnet -> "Public Subnet" / "Private Subnet"
-- EC2 -> "EC2 Instance"
-- RDS -> "RDS Database"
-- Internet Gateway -> "Internet Gateway"
-- Security Group -> "Security Group"
+2. **LOAD BALANCER "GLUE" (Mandatory Connections):**
+   - Creating an ALB (\`aws_lb\`) is NOT enough. You MUST create:
+     1. \`aws_lb_target_group\` (Health checks enabled).
+     2. \`aws_lb_listener\` (Port 80 routing to Target Group).
+     3. \`aws_lb_target_group_attachment\` (Connecting EC2 instances to TG) **OR** \`aws_autoscaling_attachment\` (if ASG).
+   - **Without these 3 resources, the ALB is useless.**
+
+3. **MODERN SYNTAX & SECURITY:**
+   - Use \`aws_launch_template\` (NOT \`aws_launch_configuration\`).
+   - Use \`domain = "vpc"\` inside \`aws_eip\` (NOT \`vpc = true\`).
+   - RDS: Use \`db_name\` (NOT \`name\`).
+   - Security Groups: ALWAYS add an \`egress\` rule allowing all outbound traffic (\`0.0.0.0/0\`).
+
+4. **3-TIER PLACEMENT LOGIC:**
+   - **Tier 1 (Public):** Load Balancers, NAT Gateways, Bastion Hosts.
+   - **Tier 2 (Private):** Web/App EC2 Instances (Connects to ALB).
+   - **Tier 3 (Private):** RDS Databases (Connects to App Tier).
+
+### VISUALIZATION RULES (JSON):
+- Generate "nodes" for: VPC, Subnets, EC2, RDS, ALB, IGW, NAT Gateway.
+- Generate "edges" to show flow:
+  - IGW -> Public Route Table -> Public Subnet.
+  - ALB -> Target Group -> EC2.
+  - Private Subnet -> NAT Gateway.
 
 ### OUTPUT FORMAT (JSON ONLY):
 {
-  "summary": "Brief description.",
+  "summary": "Full description of the architecture.",
   "nodes": [ ... ],
-  "edges": [ { "id": "e1", "source": "node1", "target": "node2" } ], 
-  "terraformCode": "resource \"aws_vpc\" \"main\" {\\n  cidr_block = \"10.0.0.0/16\"\\n}"
+  "edges": [ ... ], 
+  "terraformCode": "resource \"aws_vpc\" \"main\" { ... }"
 }
 `;
 
@@ -39,12 +54,11 @@ export async function runDrafterAgent(prompt: string, currentState: any) {
         }));
         draftMessage += `\n\nCURRENT STATE (Merge new resources with these):\n${JSON.stringify({ nodes: contextNodes })}`;
     } else {
-        draftMessage += `\n\nStart from scratch.`;
+        draftMessage += `\n\nStart from scratch. ENSURE ROUTE TABLES, LISTENERS, AND TARGET ATTACHMENTS ARE INCLUDED.`;
     }
 
     const result = await callAIModel(DRAFTER_PROMPT, draftMessage, 'DRAFTER');
 
-    // Debugging Log to check Edges
     if (result) {
         console.log(`🔎 DRAFTER Stats: ${result.nodes?.length || 0} Nodes, ${result.edges?.length || 0} Edges.`);
     }
