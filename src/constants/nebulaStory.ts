@@ -56,6 +56,3 @@ export const HERO_ICONS = [
   { Icon: Cpu, delay: 1, x: 150, y: 60 },
   { Icon: Rocket, delay: 3, x: 0, y: -120 },
 ];
-
-
-
