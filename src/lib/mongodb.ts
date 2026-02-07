@@ -10,8 +10,9 @@ const options = {};
 let client;
 let clientPromise: Promise<MongoClient>;
 
+console.log("⏳ Initializing MongoDB Client...");
+
 if (process.env.NODE_ENV === "development") {
-  
   let globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>;
   };
@@ -22,9 +23,17 @@ if (process.env.NODE_ENV === "development") {
   }
   clientPromise = globalWithMongo._mongoClientPromise;
 } else {
-  
   client = new MongoClient(uri, options);
   clientPromise = client.connect();
 }
+
+// 👇 Ye Log ab Hugging Face par dikhega
+clientPromise
+  .then((c) => {
+    console.log(`✅ MongoDB Successfully Connected to: ${c.db().databaseName}`);
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
+  });
 
 export default clientPromise;
