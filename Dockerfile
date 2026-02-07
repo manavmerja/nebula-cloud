@@ -1,11 +1,25 @@
-FROM python:3.11-slim
+# 1. Node.js Base Image (Kyuki hamara code Next.js/TS me hai)
+FROM node:18-alpine
 
-WORKDIR /code
+# 2. Working Directory
+WORKDIR /app
 
-COPY ./nebula-backend/requirements.txt /code/requirements.txt
+# 3. Dependencies Copy & Install
+COPY package.json package-lock.json* ./
+RUN npm install
 
-RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+# 4. Copy Source Code
+COPY . .
 
-COPY ./nebula-backend/app /code/app
+# 5. Build Next.js
+RUN npm run build
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# 6. Permissions (Hugging Face ke liye zaroori)
+RUN chmod -R 777 /app
+
+# 7. Port 7860 Expose karna (Taaki 404 Error na aaye)
+ENV PORT=7860
+EXPOSE 7860
+
+# 8. Start Server
+CMD ["npm", "start"]
