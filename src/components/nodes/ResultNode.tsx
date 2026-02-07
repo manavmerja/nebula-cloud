@@ -192,7 +192,7 @@ function ResultNode({ data }: ResultNodeProps) {
           )}
 
           <button onClick={handleCopy} disabled={!code} className={`transition-colors ${copied ? 'text-green-400' : 'text-gray-400 hover:text-white'}`} title="Copy Code">
-            {copied ? <Check size={50} /> : <Copy size={50} />}
+            {copied ? <Check size={20} /> : <Copy size={20} />}
           </button>
 
           <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={20} /></button>
