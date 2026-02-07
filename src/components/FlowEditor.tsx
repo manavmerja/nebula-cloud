@@ -64,9 +64,12 @@ function Flow() {
         right?: number;
         bottom?: number;
     } | null>(null);
+    
+    // 🪄 COMMAND PALETTE STATE
     const [isCommandOpen, setIsCommandOpen] = useState(false);
+    const [pendingDropPos, setPendingDropPos] = useState<{x: number, y: number} | null>(null); // New
 
-    // 🟢 VISUAL FEEDBACK STATE
+    // VISUAL FEEDBACK STATE
     const [isShiftHeld, setIsShiftHeld] = useState(false);
 
     // Quick Connect State
@@ -78,11 +81,12 @@ function Flow() {
         nodes, edges, setNodes, setEdges,
         onNodesChange, onEdgesChange,
         onDragOver,
-        onDrop,
+        // onDrop, // ⚠️ REMOVE Default onDrop from here, we will replace it
         onNodesDelete: originalOnNodesDelete,
         lastDeletedNode,
         setReactFlowInstance, updateResultNode,
-        projectName, setProjectName
+        projectName, setProjectName,
+        reactFlowInstance // We need this
     } = useFlowState();
 
     const { deleteElements, getNodes, fitView, project } = useReactFlow();
@@ -147,7 +151,7 @@ function Flow() {
         if (hasChanges) setEdges(updatedEdges);
     }, [edges, setEdges]);
 
-    // 🟢 1. CURSOR VISUAL FEEDBACK LOGIC
+    // CURSOR VISUAL FEEDBACK LOGIC
     useEffect(() => {
         const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftHeld(true); };
         const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setIsShiftHeld(false); };
@@ -162,6 +166,43 @@ function Flow() {
 
     // --- HANDLERS ---
 
+    // 🪄 CUSTOM DROP HANDLER (Replaces default onDrop)
+    const onDropWrapper = useCallback(
+        (event: React.DragEvent) => {
+            event.preventDefault();
+            if (!reactFlowInstance) return;
+
+            const dataStr = event.dataTransfer.getData('application/reactflow');
+            if (!dataStr) return;
+
+            const { type, label } = JSON.parse(dataStr);
+            
+            // Get accurate drop position
+            const position = reactFlowInstance.screenToFlowPosition({
+                x: event.clientX,
+                y: event.clientY,
+            });
+
+            // ✨ CASE A: Magic Node (Search)
+            if (type === 'magicNode') {
+                setPendingDropPos(position);
+                setIsCommandOpen(true);
+                return; 
+            }
+
+            // ☁️ CASE B: Normal Node (Direct Drop)
+            const newNode: Node = {
+                id: `${type}-${Date.now()}`,
+                type,
+                position,
+                data: { label: label, status: 'active' },
+            };
+            setNodes((nds) => nds.concat(newNode));
+            takeSnapshot();
+        },
+        [reactFlowInstance, setNodes, takeSnapshot],
+    );
+
     const onConnectStart = useCallback((_: React.MouseEvent | React.TouchEvent, { nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
         connectStartRef.current = { nodeId: nodeId || "", handleId: handleId || "" };
     }, []);
@@ -171,7 +212,7 @@ function Flow() {
             if (!connectStartRef.current) return;
             const target = event.target as HTMLElement;
 
-            // Magnet Logic (Drop on Node)
+            // Magnet Logic
             const targetNodeElement = target.closest('.react-flow__node');
             if (targetNodeElement) {
                 const targetNodeId = targetNodeElement.getAttribute('data-id');
@@ -193,7 +234,7 @@ function Flow() {
                 }
             }
 
-            // Menu Logic (Drop on Empty)
+            // Menu Logic
             const targetIsPane = target.classList.contains('react-flow__pane');
             if (targetIsPane) {
                 const clientX = 'clientX' in event ? event.clientX : (event as TouchEvent).changedTouches[0].clientX;
@@ -252,7 +293,7 @@ function Flow() {
     };
 
     const handleSaveClick = () => {
-        if (!session) { toast.error("Please login to save your project! 🔒"); return; }
+        if (!session) { toast.error("Please login to save your project! 白"); return; }
         setIsSaveModalOpen(true);
     };
 
@@ -262,7 +303,6 @@ function Flow() {
     };
 
     const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-        // Shift + Click Logic
         if (event.shiftKey && selectedNodeId && selectedNodeId !== node.id) {
             event.stopPropagation();
             takeSnapshot();
@@ -357,7 +397,6 @@ function Flow() {
                     onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo}
                 />
 
-                {/* 🟢 2. APPLY CURSOR CLASS */}
                 <div className={`absolute inset-0 z-10 ${isShiftHeld ? 'cursor-crosshair' : ''}`}>
                     <ReactFlow
                         nodes={nodes} edges={edges}
@@ -369,7 +408,8 @@ function Flow() {
                         onConnectEnd={onConnectEnd}
 
                         onInit={setReactFlowInstance}
-                        onDrop={onDrop} onDragOver={onDragOver}
+                        onDrop={onDropWrapper} // 👈 CHANGED: Use Wrapper instead of default onDrop
+                        onDragOver={onDragOver}
                         onNodeClick={onNodeClick}
                         onNodeContextMenu={onNodeContextMenu}
                         onPaneClick={onPaneClick}
@@ -382,7 +422,15 @@ function Flow() {
                     >
                         <Background color="#222" gap={25} size={1} variant={"dots" as any} />
                         <NebulaMinimap />
-                        <CommandPalette isOpen={isCommandOpen} onClose={() => setIsCommandOpen(false)} onToggle={handleCommandPaletteToggle} />
+                        
+                        {/* 🪄 UPDATED: Pass pendingPosition */}
+                        <CommandPalette 
+                            isOpen={isCommandOpen} 
+                            onClose={() => { setIsCommandOpen(false); setPendingDropPos(null); }} 
+                            onToggle={handleCommandPaletteToggle}
+                            pendingPosition={pendingDropPos}
+                        />
+                        
                         {menu && <ContextMenu {...menu} onClose={() => setMenu(null)} onConfigure={handleContextMenuConfigure} onViewCode={handleContextMenuViewCode} onDelete={() => handleContextMenuDelete(menu.id)} onDuplicate={handleContextMenuDuplicate} onCopy={handleContextMenuCopy} />}
                     </ReactFlow>
                 </div>
