@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   ChevronDown, Star, Search, GripVertical,
-  Cpu, Globe, HardDrive, Database, Box, MessageSquare, Shield, Eye, GitBranch, LayoutGrid
+  Cpu, Globe, HardDrive, Database, Box, MessageSquare, Shield, Eye, GitBranch, LayoutGrid, Sparkles
 } from 'lucide-react';
 import { getCloudIconPath } from '@/utils/iconMap';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -79,7 +79,13 @@ export default function Sidebar() {
     })).filter(section => section.items.length > 0);
   }, [search]);
 
-  // Drag Logic
+  // 🪄 NEW: Magic Node Drag Logic
+  const onMagicDragStart = (event: React.DragEvent) => {
+    event.dataTransfer.setData('application/reactflow', JSON.stringify({ type: 'magicNode', label: 'Select Service...' }));
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Normal Drag Logic
   const onDragStart = (event: React.DragEvent, label: string) => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify({ type: 'cloudNode', label }));
     event.dataTransfer.effectAllowed = 'move';
@@ -89,11 +95,9 @@ export default function Sidebar() {
     setFavorites((f) => f.includes(label) ? f.filter((x) => x !== label) : [...f, label]);
   };
 
-  // 🟢 UX FIX: Reset search when sidebar closes
   useEffect(() => {
       if (!isHovered) {
-          // Optional: We could clear search, or just collapse categories
-          // setSearch('');
+          setSearch('');
       }
   }, [isHovered]);
 
@@ -102,26 +106,21 @@ export default function Sidebar() {
       id="nebula-sidebar"
       initial={{ width: '4rem' }}
       animate={{ width: isHovered ? '18rem' : '4rem' }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }} // Made slightly snappier
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="h-screen bg-[#0F1117] border-r border-gray-800 flex flex-col shadow-2xl z-50 overflow-hidden relative group select-none"
     >
 
-      {/* --- PROFESSIONAL HEADER --- */}
+      {/* HEADER */}
       <div className="h-16 flex items-center px-4 border-b border-gray-800/50 bg-gradient-to-r from-gray-900 via-[#0F1117] to-[#0F1117] backdrop-blur-xl shrink-0 z-20">
-
         <div className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
-
-          {/* 1. Logo Container with Ambient Glow */}
           <div className="relative group/logo min-w-[36px] cursor-pointer">
             <div className="absolute -inset-2 bg-cyan-500/20 rounded-full blur-md opacity-0 group-hover/logo:opacity-100 transition-opacity duration-500" />
             <div className="relative w-9 h-9 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700/50 flex items-center justify-center shadow-xl group-hover/logo:border-cyan-500/30 transition-colors">
                <LayoutGrid size={18} className="text-cyan-400 drop-shadow-[0_0_3px_rgba(34,211,238,0.5)]" />
             </div>
           </div>
-
-          {/* 2. Brand Text (Animated) */}
           <motion.div
             animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -10 }}
             transition={{ duration: 0.2 }}
@@ -143,8 +142,35 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* --- SEARCH --- */}
-      <div className="px-3 py-4 shrink-0">
+      {/* --- 🪄 NEW SECTION: MAGIC SEARCH --- */}
+      <div className="px-3 py-4 shrink-0 space-y-3">
+        
+        {/* Draggable Magic Button */}
+        <div 
+            draggable
+            onDragStart={onMagicDragStart}
+            className={`
+              relative flex items-center gap-3 p-2.5 rounded-lg border border-dashed cursor-grab active:cursor-grabbing transition-all group/magic
+              ${isHovered 
+                ? 'bg-cyan-500/10 border-cyan-500/50 hover:bg-cyan-500/20 hover:border-cyan-400' 
+                : 'bg-transparent border-transparent justify-center'
+              }
+            `}
+            title="Drag to add ANY service"
+        >
+            <div className={`p-1.5 rounded-md ${isHovered ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400'}`}>
+                <Sparkles size={18} className="animate-pulse" />
+            </div>
+            
+            {isHovered && (
+                <div className="flex-1">
+                    <span className="block text-xs font-bold text-cyan-100">Universal Node</span>
+                    <span className="block text-[10px] text-cyan-400/70">Drag to search & add</span>
+                </div>
+            )}
+        </div>
+
+        {/* Regular Search */}
         <div className={`relative flex items-center ${isHovered ? 'bg-black/40' : 'bg-transparent'} rounded-lg transition-colors border border-transparent ${isHovered ? 'border-gray-700' : ''}`}>
           <Search className={`min-w-[20px] ml-2 ${isHovered ? 'text-gray-500' : 'text-gray-400'}`} size={18} />
           <motion.input
@@ -152,9 +178,9 @@ export default function Sidebar() {
             value={search}
             onChange={(e) => {
                 setSearch(e.target.value);
-                if (!isHovered) setIsHovered(true); // 🟢 Auto-expand on typing
+                if (!isHovered) setIsHovered(true);
             }}
-            placeholder="Search..."
+            placeholder="Filter..."
             className={`
               w-full bg-transparent border-none outline-none text-sm text-gray-200 placeholder:text-gray-600 ml-2 h-9
               ${!isHovered && 'hidden'}
@@ -168,8 +194,7 @@ export default function Sidebar() {
         className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 px-2 pb-10 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent"
         onWheel={(e) => e.stopPropagation()}
       >
-
-        {/* ⭐ Favorites */}
+        {/* Favorites */}
         {isHovered && favorites.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 px-2">
             <h3 className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-2 flex items-center gap-2">
@@ -187,12 +212,11 @@ export default function Sidebar() {
           </motion.div>
         )}
 
-        {/* 📂 Categories */}
+        {/* Categories */}
         {filtered.map((section) => (
           <div key={section.category} className="mb-1">
             <button
               onClick={() => {
-                // 🟢 UX FIX: If collapsed, expand sidebar first
                 if (!isHovered) {
                     setIsHovered(true);
                     setOpenCategories((c) => ({ ...c, [section.category]: true }));
@@ -221,13 +245,12 @@ export default function Sidebar() {
                 )}
               </div>
               {isHovered && (
-                <motion.div animate={{ rotate: openCategories[section.category] ? -180 : 0 }}> {/* 🟢 Changed rotation to -180 for standard chevron behavior */}
+                <motion.div animate={{ rotate: openCategories[section.category] ? -180 : 0 }}>
                   <ChevronDown size={14} className="text-gray-600" />
                 </motion.div>
               )}
             </button>
 
-            {/* Accordion Content */}
             <AnimatePresence>
               {isHovered && openCategories[section.category] && (
                 <motion.div

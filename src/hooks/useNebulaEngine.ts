@@ -10,13 +10,13 @@ const extractLabel = (node: any) => {
     return "Resource";
 };
 
-// --- 🧠 SMART PARSER v2: Logical Hierarchy (Train Fix + Grouping) ---
+// --- 🧠 SMART PARSER v3.1: Fixed Logic Hierarchy ---
 const parseTerraformToNodes = (code: string) => {
     const nodes: any[] = [];
     const edges: any[] = [];
     const lines = code.split('\n');
     
-    // 1. IGNORE LIST (Noise Reduction)
+    // 1. IGNORE LIST
     const IGNORED_TYPES = [
         'aws_route_table_association',
         'aws_route',
@@ -36,17 +36,14 @@ const parseTerraformToNodes = (code: string) => {
         'aws_internet_gateway': 'Internet Gateway',
         'aws_nat_gateway': 'NAT Gateway',
         'aws_lb': 'Load Balancer',
-        'aws_lb_target_group': 'Target Group',
         'aws_security_group': 'Security Group',
-        'aws_route_table': 'Route Table',
-        'aws_launch_template': 'Launch Template',
-        'aws_autoscaling_group': 'Auto Scaling Group'
+        'aws_apprunner_service': 'App Runner Service'
     };
 
     let vpcId: string | null = null;
     const subnetIds: string[] = [];
-    const gatewayIds: string[] = [];
-    const computeIds: string[] = [];
+    const computeIds: string[] = []; // EC2, AppRunner, Lambda
+    const dbIds: string[] = [];      // RDS, Dynamo
     const otherIds: string[] = [];
 
     // --- PASS 1: CREATE NODES ---
@@ -70,13 +67,29 @@ const parseTerraformToNodes = (code: string) => {
                 else if (name.includes('private')) label = 'Private Subnet';
             }
 
-            const nodeId = `${type}-${name}-${index}`;
+            const nodeId = `${type}-${name}`; // Unique ID
             
-            if (type === 'aws_vpc') vpcId = nodeId;
-            else if (type === 'aws_subnet') subnetIds.push(nodeId);
-            else if (type.includes('gateway')) gatewayIds.push(nodeId);
-            else if (type.includes('instance') || type.includes('rds') || type.includes('autoscaling') || type.includes('lb')) computeIds.push(nodeId);
-            else otherIds.push(nodeId);
+            // Duplicate Guard
+            if (nodes.find(n => n.id === nodeId)) return;
+
+            // 🛑 FIXED LOGIC ORDER HERE 🛑
+            if (type === 'aws_vpc') {
+                vpcId = nodeId;
+            } 
+            else if (type === 'aws_subnet') {
+                subnetIds.push(nodeId);
+            }
+            // 1. Check DB FIRST (So it doesn't get caught by 'instance')
+            else if (type.includes('db') || type.includes('rds') || type.includes('dynamo') || type.includes('redis')) {
+                dbIds.push(nodeId);
+            }
+            // 2. Check COMPUTE SECOND
+            else if (type.includes('instance') || type.includes('apprunner') || type.includes('lambda') || type.includes('ecs') || type.includes('fargate')) {
+                computeIds.push(nodeId);
+            }
+            else {
+                otherIds.push(nodeId);
+            }
 
             nodes.push({
                 id: nodeId,
@@ -94,20 +107,39 @@ const parseTerraformToNodes = (code: string) => {
         style: { stroke: '#475569', strokeWidth: 2 }
     });
 
-    // --- PASS 2: SMART LINKING ---
+    // --- PASS 2: HIERARCHY LINKS (VPC -> Subnet -> Resources) ---
     if (vpcId) {
-        gatewayIds.forEach(gwId => edges.push(createEdge(vpcId!, gwId)));
         subnetIds.forEach(subId => edges.push(createEdge(vpcId!, subId)));
         otherIds.forEach(id => edges.push(createEdge(vpcId!, id)));
     }
 
     if (subnetIds.length > 0) {
+        // Distribute Compute across subnets
         computeIds.forEach((compId, index) => {
             const targetSubnet = subnetIds[index % subnetIds.length];
             edges.push(createEdge(targetSubnet, compId));
         });
+        
+        // Distribute DBs across subnets
+        dbIds.forEach((dbId, index) => {
+             const targetSubnet = subnetIds[(index + 1) % subnetIds.length];
+             edges.push(createEdge(targetSubnet, dbId));
+        });
+
     } else if (vpcId) {
+        // Fallback: If no subnets, connect everything to VPC
         computeIds.forEach(compId => edges.push(createEdge(vpcId!, compId)));
+        dbIds.forEach(dbId => edges.push(createEdge(vpcId!, dbId)));
+    }
+
+    // --- PASS 3: LOGICAL CONNECTIONS (Compute <-> Database) ---
+    // Now that dbIds are correctly populated, this will draw the line!
+    if (computeIds.length > 0 && dbIds.length > 0) {
+        computeIds.forEach(compId => {
+            dbIds.forEach(dbId => {
+                edges.push(createEdge(compId, dbId));
+            });
+        });
     }
 
     return { nodes, edges };
@@ -122,6 +154,7 @@ export function useNebulaEngine(
     const { getNodes, getEdges, fitView } = useReactFlow();
     const toast = useToast();
 
+    // Focus Helper
     const focusOnCloudNodes = useCallback((nodesToFocus: Node[]) => {
         if (nodesToFocus.length === 0) return;
         const cloudNodeIds = nodesToFocus.filter(n => n.type === 'cloudNode').map(n => ({ id: n.id }));
@@ -130,6 +163,7 @@ export function useNebulaEngine(
         }
     }, [fitView]);
 
+    // Layout Processor
     const processLayout = useCallback((rawNodes: any[], rawEdges: any[], direction = 'LR') => {
         const processedEdges = rawEdges.map((edge: any) => ({
             ...edge,
@@ -150,49 +184,25 @@ export function useNebulaEngine(
         return { finalNodes, layoutedEdges };
     }, []);
 
-    // --- HELPER: APPLY AUDIT TO NODES ---
+    // --- HELPER: APPLY AUDIT ---
     const applyAuditToNodes = (nodes: Node[], auditReport: any[]) => {
         if (!auditReport || auditReport.length === 0) return nodes;
 
         return nodes.map(node => {
             const lowerLabel = (node.data.label || "").toLowerCase();
-            // const lowerType = (node.data.serviceType || "").toLowerCase(); // Optional usage
+            const serviceType = (node.data.serviceType || "").toLowerCase();
 
-            // Find if any error matches this node
             const issue = auditReport.find((err: any) => {
                 const msg = err.message.toLowerCase();
                 
-                // 🧠 Smart Matching Logic v2
-                const isDatabase = (lowerLabel.includes('rds') || lowerLabel.includes('database')) && (msg.includes('rds') || msg.includes('database'));
-                const isS3 = (lowerLabel.includes('s3') || lowerLabel.includes('bucket')) && (msg.includes('s3') || msg.includes('bucket') || msg.includes('public read'));
-                
-                // 👇 Improved SG Matching: Matches "0.0.0.0/0", "security group", OR "ssh"
-                const isSG = (lowerLabel.includes('security group')) && (
-                    msg.includes('0.0.0.0/0') || 
-                    msg.includes('security group') || 
-                    msg.includes('ssh') ||
-                    msg.includes('port')
-                );
-
-                const isInstance = (lowerLabel.includes('instance') || lowerLabel.includes('ec2')) && (msg.includes('instance') || msg.includes('cost'));
-
-                return isDatabase || isS3 || isSG || isInstance;
+                if (serviceType.includes('db') || serviceType.includes('rds')) return msg.includes('rds') || msg.includes('database');
+                if (serviceType.includes('security_group')) return msg.includes('security') || msg.includes('port');
+                if (serviceType.includes('s3')) return msg.includes('s3') || msg.includes('bucket');
+                return false;
             });
 
             if (issue) {
-                // Determine Status Color based on Severity
-                const isWarning = issue.severity === 'WARNING';
-                
-                return {
-                    ...node,
-                    data: { 
-                        ...node.data, 
-                        // Note: Currently UI only supports 'error' (Red) or 'active' (Green).
-                        // Future: Add 'warning' status for Yellow.
-                        status: 'error', 
-                        errorMessage: issue.message 
-                    }
-                };
+                return { ...node, data: { ...node.data, status: 'error', errorMessage: issue.message } };
             }
             return node;
         });
@@ -201,7 +211,6 @@ export function useNebulaEngine(
     // --- 1. RUN ARCHITECT ---
     const runArchitect = useCallback(async (promptText: string) => {
         if (!promptText) { toast.error("Please enter a prompt first!"); return; }
-
         setAiLoading(true);
         toast.info("Architect is thinking...");
         updateResultNode({ output: "Generating Architecture & Auditing Security..." });
@@ -221,19 +230,14 @@ export function useNebulaEngine(
 
             console.log("🎨 Parsing Terraform Code...");
             const { nodes: parsedNodes, edges: parsedEdges } = parseTerraformToNodes(data.terraformCode);
+            const { finalNodes, layoutedEdges } = processLayout(parsedNodes, parsedEdges, 'LR');
+            const auditedNodes = applyAuditToNodes(finalNodes, data.auditReport || []);
             
             const staticNodeIds = ['1', '2', '3'];
             const staticNodes = currentNodes.filter(n => staticNodeIds.includes(n.id));
-            const staticEdges = currentEdges.filter(e => ['e1-2', 'e2-3'].includes(e.id));
-
-            // Apply Layout
-            const { finalNodes, layoutedEdges } = processLayout(parsedNodes, parsedEdges, 'LR');
-
-            // 🔴 APPLY AUDIT RESULTS TO VISUALS
-            const auditedNodes = applyAuditToNodes(finalNodes, data.auditReport || []);
 
             setNodes([...staticNodes, ...auditedNodes]);
-            setEdges([...staticEdges, ...layoutedEdges]);
+            setEdges(layoutedEdges);
 
             updateResultNode({
                 output: `SUMMARY:\n${data.summary}\n\nTERRAFORM CODE:\n${data.terraformCode}`,
@@ -256,15 +260,12 @@ export function useNebulaEngine(
     // --- 2. RUN FIXER ---
     const runFixer = useCallback(async (fixResult: any) => {
         toast.info("Applying Security Fixes...");
-        
         const { nodes: parsedNodes, edges: parsedEdges } = parseTerraformToNodes(fixResult.terraformCode);
         const { finalNodes, layoutedEdges } = processLayout(parsedNodes, parsedEdges, 'LR');
-
-        // Fixer successful means no errors, so no applyAuditToNodes needed (or empty list)
-        
         const staticNodeIds = ['1', '2', '3'];
+        
         setNodes(prev => [...prev.filter(n => staticNodeIds.includes(n.id)), ...finalNodes]);
-        setEdges(prev => [...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)), ...layoutedEdges]);
+        setEdges(prev => [...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)), ...layoutedEdges]); // Keep UI edges
 
         updateResultNode({
             output: `SUMMARY:\n${fixResult.summary}\n\nTERRAFORM CODE:\n${fixResult.terraformCode}`,
@@ -275,8 +276,64 @@ export function useNebulaEngine(
         focusOnCloudNodes(finalNodes);
     }, [processLayout, setNodes, setEdges, updateResultNode, toast, focusOnCloudNodes]);
 
-    const syncVisualsToCode = useCallback(async () => { setAiLoading(false); }, []);
+    // --- 3. SMART SYNC (The Real Fix) ---
+    const syncVisualsToCode = useCallback(async () => {
+        const currentNodes = getNodes();
+        const currentEdges = getEdges();
+        
+        const resultNode = currentNodes.find(n => n.id === '3');
+        const currentCode = resultNode?.data?.terraformCode || "";
+        const cloudNodes = currentNodes.filter(n => n.type === 'cloudNode');
+
+        if (cloudNodes.length === 0 && !currentCode) {
+            toast.error("Nothing to sync yet.");
+            return;
+        }
+
+        setAiLoading(true);
+        toast.info("Syncing Visual Changes to Terraform... 🔄");
+
+        try {
+            const response = await fetch('/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    terraformCode: currentCode, 
+                    nodes: cloudNodes,
+                    edges: currentEdges 
+                }),
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            console.log("🎨 Re-drawing from Synced Code...");
+            const { nodes: parsedNodes, edges: parsedEdges } = parseTerraformToNodes(data.terraformCode);
+            const { finalNodes, layoutedEdges } = processLayout(parsedNodes, parsedEdges, 'LR');
+
+            const staticNodeIds = ['1', '2', '3'];
+            setNodes(prev => [...prev.filter(n => staticNodeIds.includes(n.id)), ...finalNodes]);
+            setEdges(prev => [...prev.filter(e => ['e1-2', 'e2-3'].includes(e.id)), ...layoutedEdges]);
+
+            updateResultNode({
+                output: `SYNC COMPLETE:\n${data.summary}\n\nUPDATED CODE:\n${data.terraformCode}`,
+                terraformCode: data.terraformCode,
+                summary: data.summary,
+                auditReport: []
+            });
+
+            toast.success("Visuals Synced Successfully! ✅");
+            focusOnCloudNodes(finalNodes);
+
+        } catch (error: any) {
+            updateResultNode({ output: `Sync Error: ${error.message}` });
+            toast.error("Sync Failed. Check console.");
+        } finally {
+            setAiLoading(false);
+        }
+    }, [getNodes, getEdges, updateResultNode, processLayout, setNodes, setEdges, toast, focusOnCloudNodes]);
     
+    // --- 4. AUTO LAYOUT ---
     const triggerAutoLayout = useCallback(() => {
         const currentNodes = getNodes();
         const currentEdges = getEdges();
