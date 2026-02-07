@@ -8,8 +8,7 @@ import {
   Container, Lock, Radio, GitBranch, Key, Link as LinkIcon
 } from "lucide-react";
 
-// --- 1. FULL SERVICE CONFIGURATION ---
-// These labels match what 'getCloudIconPath' expects in your CloudServiceNode
+// --- 1. FULL SERVICE CONFIGURATION (Same as before) ---
 const COMMANDS = [
   // --- Compute ---
   { id: "ec2", label: "EC2 Instance", category: "Compute", type: "cloudNode", data: { label: "EC2 Instance", serviceType: "compute" }, icon: Cpu },
@@ -71,9 +70,10 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   onToggle: () => void;
+  pendingPosition?: { x: number; y: number } | null; // 🆕 Updated Prop
 }
 
-export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPaletteProps) {
+export default function CommandPalette({ isOpen, onClose, onToggle, pendingPosition }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { addNodes } = useReactFlow();
@@ -121,21 +121,25 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
   const executeCommand = useCallback((item: typeof COMMANDS[0]) => {
     if (!item) return;
 
-    // Place node near the center (offset slightly to avoid stacking)
-    const randomOffset = () => (Math.random() - 0.5) * 100;
+    // 🎯 Logic: Use Drop Position OR Center
+    const position = pendingPosition || {
+       x: 250 + (Math.random() - 0.5) * 100,
+       y: 250 + (Math.random() - 0.5) * 100
+    };
+
     const newNode = {
       id: `${item.id}-${Date.now()}`,
       type: item.type, // 'cloudNode'
       position: {
-        x: 250 + randomOffset(),
-        y: 250 + randomOffset()
+        x: position.x,
+        y: position.y
       },
       data: { ...item.data }, // Passes 'label' which getCloudIconPath uses
     };
 
     addNodes(newNode);
     onClose();
-  }, [addNodes, onClose]);
+  }, [addNodes, onClose, pendingPosition]);
 
   if (!isOpen) return null;
 
@@ -154,7 +158,7 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
           <input
             autoFocus
             type="text"
-            placeholder="Search resources (e.g. 'S3', 'Database', 'Security')..."
+            placeholder={pendingPosition ? "Select service to drop here..." : "Search resources (e.g. 'S3', 'Database')..."}
             className="flex-1 bg-transparent text-white placeholder-gray-500 outline-none text-sm font-medium"
             value={query}
             onChange={(e) => {
@@ -207,7 +211,7 @@ export default function CommandPalette({ isOpen, onClose, onToggle }: CommandPal
           )}
         </div>
 
-        {/* Footer with Smart Connect Hint */}
+        {/* Footer */}
         <div className="px-4 py-2 bg-black/20 border-t border-gray-800 text-[10px] text-gray-500 flex justify-between items-center">
             <div className="flex items-center gap-2">
                 <span className="bg-gray-800/50 px-1.5 py-0.5 rounded border border-gray-700 text-gray-400">SHIFT</span>
