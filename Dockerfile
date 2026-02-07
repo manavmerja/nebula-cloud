@@ -1,4 +1,4 @@
-# 1. Node.js Base Image (Kyuki hamara code Next.js/TS me hai)
+# 1. Node.js Base Image
 FROM node:18-alpine
 
 # 2. Working Directory
@@ -6,7 +6,9 @@ WORKDIR /app
 
 # 3. Dependencies Copy & Install
 COPY package.json package-lock.json* ./
-RUN npm install
+
+# 🛑 FIX HERE: Add --legacy-peer-deps to ignore React 19 conflicts
+RUN npm install --legacy-peer-deps
 
 # 4. Copy Source Code
 COPY . .
@@ -17,7 +19,7 @@ RUN npm run build
 # 6. Permissions (Hugging Face ke liye zaroori)
 RUN chmod -R 777 /app
 
-# 7. Port 7860 Expose karna (Taaki 404 Error na aaye)
+# 7. Port 7860 Expose karna
 ENV PORT=7860
 EXPOSE 7860
 
