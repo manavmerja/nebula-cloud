@@ -2,7 +2,7 @@ import React, { memo, useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
     Terminal, RefreshCw, Download, DollarSign,
-    Eye, EyeOff, Wand2, Hammer, Copy, Check, TrendingUp
+    Wand2, Hammer, Copy, Check, TrendingUp
 } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { useToast } from '@/context/ToastContext';
@@ -26,7 +26,6 @@ function ResultNode({ data }: ResultNodeProps) {
   const [syncing, setSyncing] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [visualSyncing, setVisualSyncing] = useState(false);
-  const [showRaw, setShowRaw] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const toast = useToast();
@@ -192,15 +191,11 @@ function ResultNode({ data }: ResultNodeProps) {
             </button>
           )}
 
-          <button onClick={() => setShowRaw(!showRaw)} className="text-gray-400 hover:text-white" title="Toggle Debug View">
-            {showRaw ? <EyeOff size={14}/> : <Eye size={14}/>}
-          </button>
-
           <button onClick={handleCopy} disabled={!code} className={`transition-colors ${copied ? 'text-green-400' : 'text-gray-400 hover:text-white'}`} title="Copy Code">
-            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? <Check size={50} /> : <Copy size={50} />}
           </button>
 
-          <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={16} /></button>
+          <button onClick={handleDownload} disabled={!code} className="text-gray-400 hover:text-white"><Download size={20} /></button>
         </div>
       </div>
 
@@ -208,19 +203,15 @@ function ResultNode({ data }: ResultNodeProps) {
 
       {/* EDITOR AREA */}
       <div className="flex-1 relative bg-[#1e1e1e]">
-        {showRaw ? (
-             <textarea className="w-full h-full bg-black text-green-400 p-4 font-mono text-xs outline-none resize-none" value={code} readOnly />
-        ) : (
-            <Editor
-                key={code.length}
-                height="100%"
-                defaultLanguage="hcl"
-                theme="vs-dark"
-                value={code}
-                onChange={handleEditorChange}
-                options={{ minimap: { enabled: false }, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", automaticLayout: true, scrollBeyondLastLine: false, readOnly: fixing }}
-            />
-        )}
+        <Editor
+            key={code.length}
+            height="100%"
+            defaultLanguage="hcl"
+            theme="vs-dark"
+            value={code}
+            onChange={handleEditorChange}
+            options={{ minimap: { enabled: false }, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", automaticLayout: true, scrollBeyondLastLine: false, readOnly: fixing }}
+        />
       </div>
     </div>
   );
