@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Node, Edge } from 'reactflow';
 
-// Define the shape of your project data
 interface ProjectData {
   nodes: Node[];
   edges: Edge[];
@@ -11,54 +10,50 @@ interface ProjectData {
 export function useAutoSave(
   data: ProjectData,
   projectId: string | null,
-  session: any = null, // Add session parameter for authentication check
-  isLoading: boolean = false // Add loading flag to prevent save during load
+  session: any = null, 
+  isLoading: boolean = false
 ) {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('unsaved');
   const [lastSavedTime, setLastSavedTime] = useState<Date>(new Date());
-
-  // Track if this is the initial mount to prevent auto-save on load
+  
   const hasInitialized = useRef(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const wasLoadingRef = useRef(false); // Track loading state changes
+  const wasLoadingRef = useRef(false);
 
-  // 1. The actual API call (Debounced)
   const saveToDatabase = useCallback(async (currentData: ProjectData) => {
-    if (!projectId) {
-      console.log('[Auto-Save] Skipped: No project ID');
-      return;
-    }
-
-    // Check if user is authenticated
-    if (!session) {
-      console.log('[Auto-Save] Skipped: User not authenticated');
-      setSaveStatus('unsaved');
-      return;
-    }
+    if (!projectId || !session?.user?.email) return;
 
     try {
-      console.log('[Auto-Save] Saving project...', projectId);
       setSaveStatus('saving');
 
-      const response = await fetch(`/api/projects/${projectId}`, {
-        method: 'PUT',
+      // 👇 FIX: Use the same API as manual save to ensure userId is passed
+      const payload = {
+          userId: session.user.email, // ✅ Correct Key
+          projectId: projectId,       // ✅ Correct ID
+          name: currentData.name,
+          nodes: currentData.nodes,
+          edges: currentData.edges
+      };
+
+      // Using the /save route which handles Updates correctly
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://manavmerja-nebula-backend-live.hf.space";
+      
+      const response = await fetch(`${API_BASE}/api/v1/projects/save`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentData),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Auto-save failed');
-      }
+      if (!response.ok) throw new Error('Auto-save failed');
 
       setSaveStatus('saved');
       setLastSavedTime(new Date());
-      console.log('[Auto-Save] ✅ Project saved successfully');
     } catch (error) {
       console.error('[Auto-Save] ❌ Error:', error);
       setSaveStatus('error');
     }
   }, [projectId, session]);
+  
 
   // 2. The Watcher (Effect)
   useEffect(() => {
